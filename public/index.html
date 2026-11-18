@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nicis Einstellhilfe</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-512.png">
+<meta name="theme-color" content="#f7f3ee">
+<style>
+:root{
+  --bg:#f7f3ee; --card:#fffdfa; --ink:#2a2530; --mut:#7b7383; --line:#e7e0d8;
+  --acc:#7b3fa0; --acc2:#efe5f6; --ok:#2f8a57; --okbg:#e5f4ea; --warn:#a36a00; --warnbg:#fff3d6;
+  --err:#b3261e; --errbg:#fde8e6; --r:14px;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif; color:var(--ink);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:5;background:rgba(247,243,238,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:22px;padding:12px 24px}
+.logo{font-weight:700;font-size:18px;display:flex;align-items:center;gap:10px}
+.logo i{width:30px;height:30px;border-radius:9px;background:var(--acc);display:grid;place-items:center;color:#fff;font-style:normal;font-size:16px}
+nav{display:flex;gap:4px}
+nav button{border:0;background:none;padding:8px 14px;border-radius:999px;cursor:pointer;color:var(--mut);font-weight:550}
+nav button.on{background:var(--ink);color:#fff}
+nav button .n{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:999px;background:var(--acc2);color:var(--acc);font-size:12px}
+nav button.on .n{background:#fff3;color:#fff}
+.sp{flex:1}
+main{max-width:1280px;margin:0 auto;padding:24px}
+.hidden{display:none!important}
+.btn{border:1px solid var(--line);background:var(--card);padding:9px 16px;border-radius:10px;cursor:pointer;font-weight:550;white-space:nowrap}
+.btn:hover{border-color:#cfc6bc}
+.btn.p{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.p:hover{filter:brightness(1.07)}
+.btn.g{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.d{color:var(--err)}
+.btn.s{padding:6px 11px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+h2{font-size:22px;margin:0 0 4px}
+h3{font-size:16px;margin:0 0 10px}
+.mut{color:var(--mut)}
+.small{font-size:13px}
+label.f{display:block;font-size:12.5px;font-weight:600;color:var(--mut);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.03em}
+input[type=text],input[type=number],input[type=password],input[type=search],select,textarea{width:100%;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 10px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc2)}
+textarea{resize:vertical;min-height:70px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:600;background:#eee;color:#555}
+.chip.ok{background:var(--okbg);color:var(--ok)} .chip.warn{background:var(--warnbg);color:var(--warn)}
+.chip.err{background:var(--errbg);color:var(--err)} .chip.acc{background:var(--acc2);color:var(--acc)}
+.box{border-radius:10px;padding:10px 12px;font-size:13.5px;margin-top:10px}
+.box.err{background:var(--errbg);color:var(--err)} .box.warn{background:var(--warnbg);color:#6e4a00} .box.ok{background:var(--okbg);color:#1d5c39} .box.info{background:var(--acc2);color:#4b2766}
+.spin{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:sp 0.8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* Drop */
+#drop{border:2.5px dashed #cdbfdc;border-radius:20px;padding:46px 20px;text-align:center;background:#fbf8fd;transition:.15s;cursor:pointer}
+#drop.over{border-color:var(--acc);background:var(--acc2);transform:scale(1.005)}
+#drop .big{font-size:20px;font-weight:650;margin:8px 0 4px}
+.neu-liste{display:flex;flex-direction:column;gap:14px;margin-top:18px}
+.neu{display:grid;grid-template-columns:1fr 320px;gap:18px}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px}
+.th{position:relative;width:92px;height:92px;border-radius:10px;overflow:hidden;background:#eee;border:2px solid transparent}
+.th.main{border-color:var(--acc)}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.th .x{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:0;background:#000a;color:#fff;cursor:pointer;font-size:13px;line-height:22px;padding:0;display:none}
+.th .st{position:absolute;bottom:3px;left:3px;border:0;background:#000a;color:#fff;border-radius:6px;font-size:11px;padding:1px 5px;cursor:pointer;display:none}
+.th:hover .x,.th:hover .st{display:block}
+.th.main .st{display:block;background:var(--acc)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:6px 10px;cursor:pointer;font-size:13px}
+.seg button.on{background:var(--ink);color:#fff}
+
+/* Entwürfe */
+.dl{display:flex;flex-direction:column;gap:10px}
+.dz{display:grid;grid-template-columns:76px 1fr auto;gap:14px;align-items:center;cursor:pointer}
+.dz img{width:76px;height:76px;border-radius:10px;object-fit:cover;background:#eee}
+.dz .t{font-weight:600}
+.ed{display:grid;grid-template-columns:330px 1fr;gap:22px;margin-top:16px;border-top:1px solid var(--line);padding-top:16px}
+.ed .bilder{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-content:start}
+.ed .bilder img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#eee}
+.ed .bilder img:first-child{grid-column:span 3;aspect-ratio:4/3}
+.cnt{float:right;font-weight:600}
+.cnt.zu{color:var(--err)}
+table.mk{width:100%;border-collapse:collapse}
+table.mk td{padding:4px 6px 4px 0;vertical-align:middle}
+table.mk td:first-child{width:38%;font-size:13.5px}
+table.mk .pf{color:var(--err);font-weight:700}
+iframe.vs{width:100%;height:440px;border:1px solid var(--line);border-radius:10px;background:#fff}
+details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acc);margin-top:10px}
+.verg{font-size:12.5px;max-height:220px;overflow:auto;margin-top:6px}
+.verg div{padding:3px 0;border-bottom:1px solid #f0ebe5}
+.aktionen{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.leer{text-align:center;padding:60px 20px;color:var(--mut)}
+
+/* Login */
+#login{max-width:400px;margin:12vh auto}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:12px;z-index:50;font-size:14px;box-shadow:0 8px 30px #0003}
+@media (max-width:900px){.neu,.ed,.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="login" class="hidden">
+  <div class="card">
+    <div class="logo" style="margin-bottom:14px"><i>✦</i> Nicis Einstellhilfe</div>
+    <div id="loginSetup" class="hidden">
+      <p>Willkommen! Leg bitte einmalig ein Passwort fest. Damit kann niemand außer dir die Einstellhilfe benutzen.</p>
+      <label class="f">Neues Passwort</label><input type="password" id="pw1" autocomplete="new-password">
+      <label class="f">Passwort wiederholen</label><input type="password" id="pw2" autocomplete="new-password">
+    </div>
+    <div id="loginNormal">
+      <label class="f">Passwort</label><input type="password" id="pw" autocomplete="current-password">
+    </div>
+    <div style="margin-top:16px"><button class="btn p" id="loginBtn">Los geht's</button></div>
+    <div id="loginErr" class="box err hidden"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+<header><div class="bar">
+  <div class="logo"><i>✦</i> Einstellhilfe</div>
+  <nav>
+    <button data-tab="neu" class="on">Neue Artikel</button>
+    <button data-tab="entw">Entwürfe<span class="n" id="nEntw">0</span></button>
+    <button data-tab="fertig">Eingestellt<span class="n" id="nFertig">0</span></button>
+    <button data-tab="einst">Einstellungen</button>
+  </nav>
+  <div class="sp"></div>
+  <span id="kopfInfo" class="small mut"></span>
+</div></header>
+
+<main>
+  <!-- NEUE ARTIKEL -->
+  <section id="tab-neu">
+    <div id="hinweisSetup" class="box warn hidden" style="margin:0 0 16px"></div>
+    <div id="drop">
+      <div style="font-size:42px">📸</div>
+      <div class="big">Fotos oder Ordner hierher ziehen</div>
+      <div class="mut">Jedes Mal Ziehen = ein Artikel · Mehrere Ordner auf einmal = je Ordner ein Artikel · oder klicken zum Auswählen</div>
+      <input type="file" id="fileIn" multiple accept="image/*,.heic,.heif" class="hidden">
+    </div>
+    <div class="neu-liste" id="neuListe"></div>
+    <div class="row hidden" id="neuAktion" style="margin-top:16px;justify-content:flex-end">
+      <span class="mut small" id="neuInfo"></span>
+      <button class="btn d" id="neuLeeren">Alle verwerfen</button>
+      <button class="btn p" id="neuStart">Analysieren</button>
+    </div>
+  </section>
+
+  <!-- ENTWÜRFE -->
+  <section id="tab-entw" class="hidden">
+    <div class="row" style="margin-bottom:14px">
+      <div><h2>Entwürfe</h2><div class="mut small">Kurz prüfen, ggf. anpassen, dann einstellen. Änderungen werden automatisch gespeichert.</div></div>
+      <div class="sp"></div>
+      <button class="btn g" id="alleEinstellen">Alle fertigen einstellen</button>
+    </div>
+    <div class="dl" id="entwListe"></div>
+  </section>
+
+  <!-- EINGESTELLT -->
+  <section id="tab-fertig" class="hidden">
+    <div class="row" style="margin-bottom:14px">
+      <div><h2>Eingestellt</h2><div class="mut small">Diese Artikel sind live bei eBay.</div></div>
+      <div class="sp"></div>
+      <button class="btn" id="aufraeumen">Liste aufräumen</button>
+    </div>
+    <div class="dl" id="fertigListe"></div>
+  </section>
+
+  <!-- EINSTELLUNGEN -->
+  <section id="tab-einst" class="hidden">
+    <h2>Einstellungen</h2>
+    <div id="keyHinweis" class="box warn hidden"></div>
+    <div class="grid2" style="margin-top:14px" id="shopKarten"></div>
+    <div class="card" style="margin-top:14px">
+      <h3>Allgemein</h3>
+      <div class="grid2">
+        <div><label class="f">Artikelstandort – PLZ</label><input type="text" id="sPlz" placeholder="z. B. 29525"></div>
+        <div><label class="f">Artikelstandort – Ort</label><input type="text" id="sOrt"></div>
+        <div><label class="f">Werbung (Prozent, bei gewählter Kampagne)</label><input type="number" id="sWerb" min="2" max="100" step="0.1"></div>
+        <div>
+          <label class="f">Optionen</label>
+          <label class="row small"><input type="checkbox" id="sBO"> Preisvorschläge von Käufern erlauben</label>
+          <label class="row small" style="margin-top:6px"><input type="checkbox" id="sAuto"> Automatisch einstellen, wenn die KI sich sicher ist und nichts fehlt</label>
+        </div>
+      </div>
+      <div style="margin-top:16px"><button class="btn p" id="speichernEinst">Einstellungen speichern</button></div>
+    </div>
+  </section>
+</main>
+</div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const euro = n => (Number(n) || 0).toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+const SHOPNAME = { nicideen: "Nicideen", wonderland: "Nicis.Wonderland" };
+let KEY = localStorage.getItem("ek") || "";
+let STATE = null, DRAFTS = [], OFFEN = null, neue = [], pollT = null;
+
+function toast(t, ms = 2600) { const d = document.createElement("div"); d.className = "toast"; d.textContent = t; document.body.append(d); setTimeout(() => d.remove(), ms); }
+
+async function api(path, opt = {}) {
+  const r = await fetch("/api" + path, {
+    method: opt.method || "GET",
+    headers: { "x-key": KEY, ...(opt.json !== undefined ? { "content-type": "application/json" } : {}), ...(opt.headers || {}) },
+    body: opt.json !== undefined ? JSON.stringify(opt.json) : opt.body,
+  });
+  let j = null; try { j = await r.json(); } catch {}
+  if (r.status === 401) { zeigeLogin(j?.fehler === "setup"); throw new Error("Bitte anmelden"); }
+  if (!r.ok && !opt.roh) throw new Error(j?.fehler || "Fehler " + r.status);
+  return opt.roh ? { ok: r.ok, status: r.status, data: j } : j;
+}
+async function hashKey(pw) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("nicis-einstellhilfe|" + pw));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+
+// ---------- Login ----------
+function zeigeLogin(setup) {
+  $("#app").classList.add("hidden"); $("#login").classList.remove("hidden");
+  $("#loginSetup").classList.toggle("hidden", !setup); $("#loginNormal").classList.toggle("hidden", !!setup);
+  $("#login").dataset.setup = setup ? "1" : "";
+  setTimeout(() => (setup ? $("#pw1") : $("#pw")).focus(), 50);
+}
+$("#loginBtn").onclick = async () => {
+  const err = $("#loginErr"); err.classList.add("hidden");
+  try {
+    if ($("#login").dataset.setup) {
+      if ($("#pw1").value.length < 6) throw new Error("Bitte mindestens 6 Zeichen.");
+      if ($("#pw1").value !== $("#pw2").value) throw new Error("Die Passwörter sind nicht gleich.");
+      const k = await hashKey($("#pw1").value);
+      const r = await fetch("/api/auth/setup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: k }) });
+      if (!r.ok) throw new Error((await r.json()).fehler);
+      KEY = k;
+    } else {
+      KEY = await hashKey($("#pw").value);
+      const r = await fetch("/api/auth/check", { headers: { "x-key": KEY } });
+      if (!r.ok) throw new Error("Passwort stimmt nicht.");
+    }
+    localStorage.setItem("ek", KEY);
+    start();
+  } catch (e) { err.textContent = e.message; err.classList.remove("hidden"); }
+};
+$("#login").addEventListener("keydown", e => { if (e.key === "Enter") $("#loginBtn").click(); });
+
+// ---------- Tabs ----------
+function tab(n) {
+  $$("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === n));
+  ["neu", "entw", "fertig", "einst"].forEach(t => $("#tab-" + t).classList.toggle("hidden", t !== n));
+  if (n === "einst") renderEinst();
+}
+$$("nav button").forEach(b => b.onclick = () => tab(b.dataset.tab));
+
+async function start() {
+  try { STATE = await api("/state"); } catch { return; }
+  $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
+  setupHinweis();
+  await ladeDrafts();
+  const p = new URLSearchParams(location.search);
+  if (p.get("tab")) tab(p.get("tab"));
+}
+
+function setupHinweis() {
+  const h = [];
+  if (!STATE.konfig.ebay) h.push("eBay-Schlüssel sind noch nicht eingetragen.");
+  for (const s of ["nicideen", "wonderland"]) if (!STATE.shops[s].verbunden) h.push(`${SHOPNAME[s]} ist noch nicht mit eBay verbunden.`);
+  const st = STATE.settings;
+  if (!st.standort.plz) h.push("Artikelstandort (PLZ) fehlt.");
+  const box = $("#hinweisSetup");
+  box.innerHTML = h.length ? `<b>Noch einzurichten:</b> ${h.map(esc).join(" ")} <a href="#" onclick="tab('einst');return false">→ Einstellungen</a>` : "";
+  box.classList.toggle("hidden", !h.length);
+  const v = ["nicideen", "wonderland"].filter(s => STATE.shops[s].verbunden).map(s => SHOPNAME[s] + " ✓");
+  $("#kopfInfo").textContent = v.join(" · ");
+}
+
+// ---------- Fotos aufnehmen ----------
+const BILD = /\.(jpe?g|png|heic|heif|webp|gif|tiff?)$/i;
+const natSort = (a, b) => a.name.localeCompare(b.name, "de", { numeric: true });
+function readAll(dirEntry) {
+  return new Promise(res => {
+    const r = dirEntry.createReader(), out = [];
+    const next = () => r.readEntries(async ents => {
+      if (!ents.length) return res(out);
+      for (const e of ents) {
+        if (e.isFile) out.push(await new Promise(ok => e.file(ok, () => ok(null))));
+        else if (e.isDirectory) out.push(...await readAll(e));
+      }
+      next();
+    }, () => res(out));
+    next();
+  });
+}
+function neuerArtikel(files, name = "") {
+  files = files.filter(f => f && (f.type.startsWith("image/") || BILD.test(f.name))).sort(natSort).slice(0, 24);
+  if (!files.length) return;
+  neue.push({ id: Math.random().toString(36).slice(2), name, files, haupt: 0, hinweis: "", shopWunsch: "auto", preisWunsch: "", urls: files.map(f => URL.createObjectURL(f)) });
+}
+const drop = $("#drop");
+drop.onclick = () => $("#fileIn").click();
+$("#fileIn").onchange = e => { neuerArtikel([...e.target.files]); e.target.value = ""; renderNeu(); };
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", async e => {
+  const items = [...e.dataTransfer.items].map(i => i.webkitGetAsEntry?.()).filter(Boolean);
+  const lose = [];
+  if (items.length) {
+    for (const en of items) {
+      if (en.isDirectory) neuerArtikel(await readAll(en), en.name);
+      else lose.push(await new Promise(ok => en.file(ok, () => ok(null))));
+    }
+  } else lose.push(...e.dataTransfer.files);
+  if (lose.length) neuerArtikel(lose);
+  renderNeu();
+});
+
+function renderNeu() {
+  const L = $("#neuListe");
+  L.innerHTML = neue.map((a, ai) => `
+    <div class="card neu" data-i="${ai}">
+      <div>
+        <div class="row" style="margin-bottom:10px"><b>Artikel ${ai + 1}</b>${a.name ? `<span class="chip">${esc(a.name)}</span>` : ""}<span class="mut small">${a.files.length} Foto${a.files.length > 1 ? "s" : ""}</span>
+          <span class="sp"></span>${a.status ? `<span class="chip acc">${a.status}</span>` : ""}
+          ${ai > 0 && !a.status ? `<button class="btn s" data-merge="${ai}" title="Fotos zum Artikel darüber hinzufügen">↑ zusammenführen</button>` : ""}
+          ${!a.status ? `<button class="btn s d" data-del="${ai}">Entfernen</button>` : ""}</div>
+        <div class="thumbs">${a.urls.map((u, fi) => `<div class="th ${fi === a.haupt ? "main" : ""}"><img src="${u}" loading="lazy"><button class="x" data-x="${ai}:${fi}">✕</button><button class="st" data-st="${ai}:${fi}">${fi === a.haupt ? "★ Titelbild" : "☆ Titelbild"}</button></div>`).join("")}</div>
+      </div>
+      <div>
+        <label class="f" style="margin-top:0">Hinweis für die KI (optional)</label>
+        <textarea data-f="hinweis" placeholder="z. B. getestet, funktioniert · Anleitung fehlt · Kratzer hinten">${esc(a.hinweis)}</textarea>
+        <label class="f">Shop</label>
+        <div class="seg" data-seg="${ai}">${[["auto", "Automatisch"], ["nicideen", "Nicideen"], ["wonderland", "Wonderland"]].map(([v, t]) => `<button data-v="${v}" class="${a.shopWunsch === v ? "on" : ""}">${t}</button>`).join("")}</div>
+        <label class="f">Preiswunsch (optional)</label>
+        <input type="text" data-f="preisWunsch" placeholder="leer = KI schlägt vor" value="${esc(a.preisWunsch)}">
+      </div>
+    </div>`).join("");
+  $("#neuAktion").classList.toggle("hidden", !neue.length);
+  $("#neuInfo").textContent = `${neue.length} Artikel · ${neue.reduce((n, a) => n + a.files.length, 0)} Fotos`;
+  $("#neuStart").textContent = neue.length > 1 ? `Alle ${neue.length} Artikel analysieren` : "Artikel analysieren";
+}
+$("#neuListe").addEventListener("input", e => {
+  const c = e.target.closest(".neu"); if (!c || !e.target.dataset.f) return;
+  neue[c.dataset.i][e.target.dataset.f] = e.target.value;
+});
+$("#neuListe").addEventListener("click", e => {
+  const t = e.target;
+  if (t.dataset.del) { neue.splice(+t.dataset.del, 1); renderNeu(); }
+  else if (t.dataset.merge) { const i = +t.dataset.merge, a = neue[i], b = neue[i - 1]; b.files.push(...a.files); b.urls.push(...a.urls); b.files = b.files.slice(0, 24); b.urls = b.urls.slice(0, 24); neue.splice(i, 1); renderNeu(); }
+  else if (t.dataset.x) { const [ai, fi] = t.dataset.x.split(":").map(Number), a = neue[ai]; a.files.splice(fi, 1); a.urls.splice(fi, 1); if (a.haupt >= a.files.length) a.haupt = 0; if (!a.files.length) neue.splice(ai, 1); renderNeu(); }
+  else if (t.dataset.st) { const [ai, fi] = t.dataset.st.split(":").map(Number); neue[ai].haupt = fi; renderNeu(); }
+  else if (t.closest(".seg") && t.dataset.v) { neue[+t.closest(".seg").dataset.seg].shopWunsch = t.dataset.v; renderNeu(); }
+});
+$("#neuLeeren").onclick = () => { if (confirm("Alle noch nicht analysierten Artikel verwerfen?")) { neue = []; renderNeu(); } };
+
+function ladeBild(file) {
+  return new Promise((ok, no) => {
+    const img = new Image(); const u = URL.createObjectURL(file);
+    img.onload = () => { URL.revokeObjectURL(u); ok(img); };
+    img.onerror = () => { URL.revokeObjectURL(u); no(new Error(`„${file.name}“ kann nicht gelesen werden.`)); };
+    img.src = u;
+  });
+}
+function skaliere(img, max, q) {
+  const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+  const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(img, 0, 0, c.width, c.height);
+  return new Promise(ok => c.toBlob(ok, "image/jpeg", q));
+}
+
+$("#neuStart").onclick = async () => {
+  const btn = $("#neuStart"); btn.disabled = true;
+  const liste = [...neue];
+  for (const a of liste) {
+    try {
+      const files = [a.files[a.haupt], ...a.files.filter((_, i) => i !== a.haupt)];
+      a.status = "lädt Fotos hoch …"; renderNeu();
+      const d = await api("/drafts", { method: "POST", json: { bilder: files.length, name: a.name, hinweis: a.hinweis, shopWunsch: a.shopWunsch, preisWunsch: a.preisWunsch } });
+      let fertig = 0, pos = 0;
+      const w = async () => {
+        while (pos < files.length) {
+          const i = pos++;
+          const img = await ladeBild(files[i]);
+          const [voll, ki] = await Promise.all([skaliere(img, 1600, 0.88), skaliere(img, 1092, 0.8)]);
+          await api(`/drafts/${d.id}/bild/${i}/voll`, { method: "PUT", body: voll, headers: { "content-type": "image/jpeg" } });
+          await api(`/drafts/${d.id}/bild/${i}/ki`, { method: "PUT", body: ki, headers: { "content-type": "image/jpeg" } });
+          a.status = `lädt Fotos hoch … ${++fertig}/${files.length}`; renderNeu();
+        }
+      };
+      await Promise.all([w(), w(), w()]);
+      await fetch("/api/analyse", { method: "POST", headers: { "x-key": KEY, "content-type": "application/json" }, body: JSON.stringify({ id: d.id }) });
+      neue.splice(neue.indexOf(a), 1); renderNeu();
+    } catch (e) { a.status = "Fehler: " + e.message; renderNeu(); }
+  }
+  btn.disabled = false;
+  toast("Läuft! Die KI arbeitet jetzt im Hintergrund – du kannst weitermachen.");
+  await ladeDrafts();
+  if (!neue.length) tab("entw");
+};
+
+// ---------- Entwürfe ----------
+async function ladeDrafts() {
+  try { DRAFTS = await api("/drafts"); } catch { return; }
+  const entw = DRAFTS.filter(d => d.status !== "eingestellt"), fertig = DRAFTS.filter(d => d.status === "eingestellt");
+  $("#nEntw").textContent = entw.length; $("#nFertig").textContent = fertig.length;
+  renderEntw(entw); renderFertig(fertig);
+  clearTimeout(pollT);
+  if (DRAFTS.some(d => ["neu", "analysiere", "einstellen"].includes(d.status))) pollT = setTimeout(ladeDrafts, 4000);
+}
+const bildUrl = (d, n) => `/api/drafts/${d.id}/bild/${n}?t=${KEY}`;
+function statusChip(d) {
+  if (d.status === "analysiere") return `<span class="chip acc"><span class="spin"></span> KI arbeitet …</span>`;
+  if (d.status === "neu") return `<span class="chip">wartet</span>`;
+  if (d.status === "einstellen") return `<span class="chip acc"><span class="spin"></span> wird eingestellt …</span>`;
+  if (d.status === "fehler") return `<span class="chip err">Fehler</span>`;
+  if (d.fehler) return `<span class="chip err">eBay-Fehler</span>`;
+  if (d.fehlt?.length) return `<span class="chip warn">${d.fehlt.length} Angabe${d.fehlt.length > 1 ? "n" : ""} fehlt</span>`;
+  if (d.ki?.sicherheit && d.ki.sicherheit !== "hoch") return `<span class="chip warn">bitte prüfen</span>`;
+  return `<span class="chip ok">bereit</span>`;
+}
+function renderEntw(list) {
+  const L = $("#entwListe");
+  if (!list.length) { L.innerHTML = `<div class="leer">Noch keine Entwürfe. Zieh Fotos in „Neue Artikel“.</div>`; return; }
+  // offenen Editor nicht neu zeichnen, solange darin gearbeitet wird
+  const offen = OFFEN && L.querySelector(`[data-id="${OFFEN}"] .ed`);
+  L.innerHTML = list.map(d => `
+    <div class="card" data-id="${d.id}">
+      <div class="dz" data-open="${d.id}">
+        <img src="${d.bilder ? bildUrl(d, 0) : ""}" loading="lazy">
+        <div><div class="t">${esc(d.titel || d.name || "Neuer Artikel")}</div>
+          <div class="small mut">${d.shop ? SHOPNAME[d.shop] + " · " : ""}${d.preis ? euro(d.preis) + " · " : ""}${d.bilder} Fotos${d.status === "fehler" ? " · " + esc(d.fehler) : ""}</div></div>
+        <div>${statusChip(d)}</div>
+      </div>
+      <div class="edw"></div>
+    </div>`).join("");
+  if (OFFEN && list.find(d => d.id === OFFEN && d.status === "fertig")) {
+    const card = L.querySelector(`[data-id="${OFFEN}"] .edw`);
+    if (offen) card.replaceWith(offen.parentElement); else oeffne(OFFEN);
+  }
+}
+$("#entwListe").addEventListener("click", e => {
+  const o = e.target.closest("[data-open]"); if (!o) return;
+  const id = o.dataset.open;
+  if (OFFEN === id) { OFFEN = null; o.parentElement.querySelector(".edw").innerHTML = ""; return; }
+  $$(".edw").forEach(x => x.innerHTML = ""); oeffne(id);
+});
+
+function oeffne(id) {
+  const d = DRAFTS.find(x => x.id === id); if (!d) return;
+  OFFEN = id;
+  const w = $(`#entwListe [data-id="${id}"] .edw`);
+  if (d.status === "analysiere" || d.status === "neu" || d.status === "einstellen") { w.innerHTML = `<div class="box info">Bitte einen Moment – ${d.status === "einstellen" ? "der Artikel wird gerade eingestellt" : "die KI erstellt gerade das Angebot"}.</div>`; return; }
+  if (d.status === "fehler") {
+    w.innerHTML = `<div class="box err">${esc(d.fehler)}</div><div class="aktionen"><button class="btn p" data-a="neu">Noch mal analysieren</button><button class="btn d" data-a="del">Löschen</button></div>`;
+    bindAktionen(w, d); return;
+  }
+  const kat = (d.kategorien || []).find(k => k.id === d.kategorieId) || { aspekte: [], zustaende: [] };
+  const sd = STATE.shops[d.shop]?.daten;
+  const skats = sd?.storeKategorien || [];
+  const aspekte = [...kat.aspekte].sort((a, b) => (b.pflicht - a.pflicht) || (b.empfohlen - a.empfohlen));
+  const bekannt = new Set(aspekte.map(a => a.name));
+  const extra = Object.keys(d.merkmale || {}).filter(k => !bekannt.has(k));
+  const zeigeAsp = aspekte.filter(a => a.pflicht || a.empfohlen || (d.merkmale?.[a.name] || []).length).slice(0, 40);
+  const mkZeile = (name, pf, werte, val, liste) => `<tr><td>${esc(name)}${pf ? ' <span class="pf">*</span>' : ""}</td><td><input type="text" data-mk="${esc(name)}" value="${esc((val || []).join(", "))}" ${liste ? `list="dl-${id}-${esc(name).replace(/\W/g, "")}"` : ""} placeholder="${pf ? "Pflichtangabe" : ""}">${liste ? `<datalist id="dl-${id}-${esc(name).replace(/\W/g, "")}">${werte.map(v => `<option value="${esc(v)}">`).join("")}</datalist>` : ""}</td></tr>`;
+  w.innerHTML = `
+  <div class="ed">
+    <div>
+      <div class="bilder">${Array.from({ length: d.bilder }, (_, i) => `<img src="${bildUrl(d, i)}" loading="lazy">`).join("")}</div>
+      <div class="box info"><b>KI:</b> ${esc(d.ki?.artikel || "")}<br>Sicherheit: <b>${esc(d.ki?.sicherheit || "–")}</b>${d.ki?.hinweise ? `<br>${esc(d.ki.hinweise)}` : ""}</div>
+      ${d.hinweis ? `<div class="box">Dein Hinweis: ${esc(d.hinweis)}</div>` : ""}
+    </div>
+    <div>
+      ${d.fehler ? `<div class="box err" style="margin-top:0"><b>eBay sagt:</b> ${esc(d.fehler)}</div>` : ""}
+      ${d.warnungen?.length ? `<div class="box warn">${d.warnungen.map(esc).join("<br>")}</div>` : ""}
+      ${d.geprueft && !d.fehler ? `<div class="box ok">Geprüft ✓ – eBay hat nichts zu meckern.${d.gebuehren?.summe ? ` Einstellgebühren: ${euro(d.gebuehren.summe)}` : " Keine Einstellgebühren."}</div>` : ""}
+      ${d.fehlt?.length ? `<div class="box warn">Fehlt noch: ${d.fehlt.map(esc).join(", ")}</div>` : ""}
+      <div class="grid2">
+        <div><label class="f">Shop</label><select data-k="shop">${["nicideen", "wonderland"].map(s => `<option value="${s}" ${d.shop === s ? "selected" : ""}>${SHOPNAME[s]}</option>`).join("")}</select></div>
+        <div><label class="f">Preis (€)</label><input type="text" data-k="preis" value="${String(d.preis ?? "").replace(".", ",")}"></div>
+      </div>
+      <label class="f">Titel <span class="cnt" id="cnt-${id}"></span></label>
+      <input type="text" data-k="titel" value="${esc(d.titel)}" maxlength="80">
+      ${d.ki?.preisBegruendung ? `<div class="small mut" style="margin-top:6px">💶 ${esc(d.ki.preisBegruendung)}</div>` : ""}
+      ${d.ki?.vergleich?.length ? `<details><summary>Vergleichsangebote bei eBay (${d.ki.vergleich.length})</summary><div class="verg">${d.ki.vergleich.map(v => `<div><b>${euro(v.gesamt)}</b> <span class="mut">(${euro(v.preis)} + ${euro(v.versand)})</span> · ${esc(v.zustand || "")} · ${esc(v.titel)}</div>`).join("")}</div></details>` : ""}
+      <div class="grid2">
+        <div><label class="f">eBay-Kategorie</label><select data-k="kategorieId">${d.kategorieId ? "" : '<option value="">– bitte wählen –</option>'}${(d.kategorien || []).map(k => `<option value="${esc(k.id)}" ${k.id === d.kategorieId ? "selected" : ""}>${esc(k.pfad)}</option>`).join("")}<option value="__suche">Andere Kategorie suchen …</option></select></div>
+        <div><label class="f">Shop-Kategorie</label><select data-k="shopKategorieId"><option value="">– keine –</option>${skats.map(k => `<option value="${esc(k.id)}" ${k.id === d.shopKategorieId ? "selected" : ""}>${esc(k.pfad)}</option>`).join("")}</select></div>
+      </div>
+      <div class="row hidden" id="ksuche-${id}" style="margin-top:8px"><input type="search" placeholder="Suchbegriff, z. B. Nintendo 64 Spiel" style="flex:1"><button class="btn s">Suchen</button></div>
+      <div class="grid2">
+        <div><label class="f">Zustand</label><select data-k="zustandId">${(kat.zustaende || []).map(z => `<option value="${esc(z.id)}" ${z.id === d.zustandId ? "selected" : ""}>${esc(z.name)}</option>`).join("")}</select></div>
+        <div><label class="f">EAN (optional)</label><input type="text" data-k="ean" value="${esc(d.ean)}"></div>
+      </div>
+      <label class="f">Zustandsbeschreibung</label>
+      <textarea data-k="zustandText" rows="2">${esc(d.zustandText)}</textarea>
+      <label class="f">Artikelmerkmale <span style="text-transform:none;font-weight:400">(<span class="pf" style="color:var(--err)">*</span> = Pflicht · mehrere Werte mit Komma)</span></label>
+      <table class="mk">${zeigeAsp.map(a => mkZeile(a.name, a.pflicht, a.werte, d.merkmale?.[a.name], a.werte.length)).join("")}${extra.map(n => mkZeile(n, false, [], d.merkmale[n], 0)).join("")}</table>
+      <label class="f">Beschreibung <a href="#" data-a="html" style="float:right;text-transform:none">HTML bearbeiten</a></label>
+      <iframe class="vs" sandbox></iframe>
+      <textarea data-k="beschreibung" class="hidden" rows="16" style="font-family:ui-monospace,Menlo,monospace;font-size:12px">${esc(d.beschreibung)}</textarea>
+      <div class="aktionen">
+        <button class="btn g" data-a="go">Bei eBay einstellen</button>
+        <button class="btn" data-a="pruefen">Nur prüfen</button>
+        <span class="sp"></span>
+        <button class="btn" data-a="neu">Neu analysieren</button>
+        <button class="btn d" data-a="del">Löschen</button>
+      </div>
+      <div class="small mut" id="msg-${id}" style="margin-top:8px"></div>
+    </div>
+  </div>`;
+  const ifr = $("iframe.vs", w); ifr.srcdoc = `<base target="_blank"><body style="margin:12px">${d.beschreibung || ""}`;
+  const cnt = () => { const n = [...($("[data-k=titel]", w).value)].length; const c = $("#cnt-" + id); c.textContent = n + "/80"; c.classList.toggle("zu", n > 80); };
+  cnt();
+  let t = null;
+  const speichern = async (sofort) => {
+    clearTimeout(t);
+    const run = async () => {
+      const body = {};
+      $$("[data-k]", w).forEach(el => { if (el.dataset.k !== "kategorieId" || el.value !== "__suche") body[el.dataset.k] = el.value; });
+      body.merkmale = {};
+      $$("[data-mk]", w).forEach(el => { const v = el.value.split(",").map(s => s.trim()).filter(Boolean); if (v.length) body.merkmale[el.dataset.mk] = v; });
+      const r = await api(`/drafts/${id}`, { method: "PUT", json: body });
+      Object.assign(d, r); $("#msg-" + id).textContent = "Gespeichert ✓";
+    };
+    if (sofort) return run();
+    t = setTimeout(run, 700);
+  };
+  w.addEventListener("input", e => { if (e.target.dataset.k === "kategorieId" || e.target.dataset.k === "shop") return; if (e.target.dataset.k === "titel") cnt(); if (e.target.dataset.k === "beschreibung") ifr.srcdoc = `<base target="_blank"><body style="margin:12px">${e.target.value}`; if (e.target.dataset.k || e.target.dataset.mk) speichern(); });
+  w.addEventListener("change", async e => {
+    const k = e.target.dataset.k;
+    if (k === "kategorieId") {
+      if (e.target.value === "__suche") { $("#ksuche-" + id).classList.remove("hidden"); $("#ksuche-" + id + " input").focus(); return; }
+      await wechsleKategorie(d, e.target.value);
+    } else if (k === "shop") { await speichern(true); await ladeDrafts(); oeffneNeu(id); }
+  });
+  const ks = $("#ksuche-" + id);
+  const sucheKat = async () => {
+    const q = $("input", ks).value.trim(); if (!q) return;
+    const r = await api("/kategorie-suche?q=" + encodeURIComponent(q));
+    if (!r.length) return toast("Nichts gefunden.");
+    const sel = $("[data-k=kategorieId]", w);
+    for (const k of r.slice(0, 8)) if (!d.kategorien.find(x => x.id === k.id)) sel.insertBefore(new Option(k.pfad, k.id), sel.lastElementChild);
+    sel.value = r[0].id; toast("Kategorien ergänzt – bitte auswählen.");
+    d._kandidaten = r;
+  };
+  $("button", ks).onclick = sucheKat; $("input", ks).onkeydown = e => { if (e.key === "Enter") sucheKat(); };
+  bindAktionen(w, d, speichern);
+}
+async function wechsleKategorie(d, kid) {
+  let k = d.kategorien.find(x => x.id === kid);
+  if (!k) {
+    const pfad = (d._kandidaten || []).find(x => x.id === kid)?.pfad || kid;
+    const r = await api("/kategorie/" + encodeURIComponent(kid));
+    k = { id: kid, pfad, aspekte: r.aspekte, zustaende: r.zustaende };
+    d.kategorien.push(k);
+  }
+  const z = k.zustaende.find(z => z.id === d.zustandId) ? d.zustandId : (k.zustaende.find(z => z.id === "3000") || k.zustaende[0])?.id;
+  await api(`/drafts/${d.id}`, { method: "PUT", json: { kategorieId: kid, kategorien: d.kategorien, zustandId: z } });
+  await ladeDrafts(); oeffneNeu(d.id);
+}
+function oeffneNeu(id) { OFFEN = null; $$(".edw").forEach(x => x.innerHTML = ""); oeffne(id); }
+
+function bindAktionen(w, d, speichern) {
+  w.addEventListener("click", async e => {
+    const a = e.target.dataset.a; if (!a) return;
+    e.preventDefault();
+    if (a === "html") { const ta = $("[data-k=beschreibung]", w); ta.classList.toggle("hidden"); $("iframe.vs", w).classList.toggle("hidden"); return; }
+    if (a === "del") { if (!confirm("Diesen Entwurf wirklich löschen?")) return; await api(`/drafts/${d.id}`, { method: "DELETE" }); OFFEN = null; return ladeDrafts(); }
+    if (a === "neu") { await fetch("/api/analyse", { method: "POST", headers: { "x-key": KEY, "content-type": "application/json" }, body: JSON.stringify({ id: d.id }) }); toast("Wird neu analysiert …"); setTimeout(ladeDrafts, 1500); OFFEN = null; return; }
+    if (a === "go" || a === "pruefen") {
+      const btn = e.target; btn.disabled = true; const alt = btn.textContent; btn.innerHTML = `<span class="spin"></span> ${a === "go" ? "Stelle ein …" : "Prüfe …"}`;
+      try {
+        if (speichern) await speichern(true);
+        const r = await api(`/drafts/${d.id}/einstellen`, { method: "POST", json: { pruefen: a === "pruefen" }, roh: true });
+        if (r.ok && a === "go") { toast("Eingestellt! 🎉"); OFFEN = null; }
+        else if (!r.ok) toast("eBay hat einen Fehler gemeldet – siehe oben.");
+      } catch (err) { toast(err.message); }
+      btn.disabled = false; btn.textContent = alt;
+      await ladeDrafts(); if (OFFEN === d.id) oeffneNeu(d.id);
+    }
+  });
+}
+
+$("#alleEinstellen").onclick = async () => {
+  const bereit = DRAFTS.filter(d => d.status === "fertig" && !d.fehlt?.length && !d.fehler);
+  if (!bereit.length) return toast("Kein Entwurf ist bereit (grün markiert).");
+  if (!confirm(`${bereit.length} Artikel jetzt bei eBay einstellen?`)) return;
+  const b = $("#alleEinstellen"); b.disabled = true; let ok = 0, err = 0;
+  for (const d of bereit) {
+    b.textContent = `Stelle ein … ${ok + err + 1}/${bereit.length}`;
+    const r = await api(`/drafts/${d.id}/einstellen`, { method: "POST", json: { pruefen: false }, roh: true }).catch(() => ({ ok: false }));
+    r.ok ? ok++ : err++;
+  }
+  b.disabled = false; b.textContent = "Alle fertigen einstellen";
+  toast(`${ok} eingestellt${err ? `, ${err} mit Fehler` : ""}.`, 4000);
+  ladeDrafts();
+};
+
+function renderFertig(list) {
+  $("#fertigListe").innerHTML = list.length ? list.map(d => `
+    <div class="card"><div class="dz" style="cursor:default">
+      <img src="${bildUrl(d, 0)}" loading="lazy">
+      <div><div class="t">${esc(d.titel)}</div><div class="small mut">${SHOPNAME[d.shop]} · ${euro(d.preis)} · ${new Date(d.eingestellt).toLocaleString("de-DE")}${d.werbung ? " · Werbung " + esc(d.werbung) : ""}</div>
+      ${d.warnungen?.length ? `<div class="small" style="color:var(--warn)">${d.warnungen.map(esc).join(" · ")}</div>` : ""}</div>
+      <div class="row"><a class="btn s" href="https://www.ebay.de/itm/${esc(d.itemId)}" target="_blank">Bei eBay ansehen ↗</a></div>
+    </div></div>`).join("") : `<div class="leer">Noch nichts eingestellt.</div>`;
+}
+$("#aufraeumen").onclick = async () => {
+  const l = DRAFTS.filter(d => d.status === "eingestellt");
+  if (!l.length || !confirm(`${l.length} erledigte Einträge aus der Liste entfernen? (Die Angebote bei eBay bleiben natürlich.)`)) return;
+  for (const d of l) await api(`/drafts/${d.id}`, { method: "DELETE" });
+  ladeDrafts();
+};
+
+// ---------- Einstellungen ----------
+function renderEinst() {
+  const st = STATE.settings;
+  const kh = $("#keyHinweis");
+  kh.innerHTML = STATE.konfig.ebay ? "" : "Die eBay-Schlüssel sind noch nicht hinterlegt. Das machen wir gemeinsam – sag Claude Bescheid.";
+  kh.classList.toggle("hidden", STATE.konfig.ebay);
+  $("#shopKarten").innerHTML = ["nicideen", "wonderland"].map(s => {
+    const sh = STATE.shops[s], c = st.shops[s], dd = sh.daten;
+    const prof = t => (dd?.profile || []).filter(p => p.typ === t);
+    const sel = (key, t, label) => `<label class="f">${label}</label><select data-s="${s}" data-p="${key}"><option value="">– bitte wählen –</option>${prof(t).map(p => `<option value="${esc(p.id)}" ${c.profile[key] === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select>`;
+    return `<div class="card">
+      <div class="row"><h3 style="margin:0">${SHOPNAME[s]}</h3><span class="sp"></span>${sh.verbunden ? `<span class="chip ok">verbunden${dd?.user ? " · " + esc(dd.user) : ""}</span>` : `<span class="chip warn">nicht verbunden</span>`}</div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn ${sh.verbunden ? "" : "p"} s" data-connect="${s}" ${STATE.konfig.ebay ? "" : "disabled"}>${sh.verbunden ? "Neu verbinden" : "Mit eBay verbinden"}</button>
+        ${sh.verbunden ? `<button class="btn s" data-sync="${s}">Shop-Daten neu laden</button>` : ""}
+      </div>
+      ${!sh.verbunden ? `<div class="small mut" style="margin-top:6px">Wichtig: Beim eBay-Login mit dem Konto von <b>${SHOPNAME[s]}</b> anmelden.</div>` : ""}
+      ${dd ? `<div class="small mut" style="margin-top:8px">${dd.storeKategorien.length} Shop-Kategorien · ${dd.anzahlAktiv} aktive Angebote · geladen ${new Date(dd.geladen).toLocaleString("de-DE")}</div>${dd.hinweise?.length ? `<div class="box warn">${dd.hinweise.map(esc).join("<br>")}</div>` : ""}` : ""}
+      ${dd ? `<div class="grid2">${sel("shipping", "SHIPPING", "Versand-Profil")}${sel("payment", "PAYMENT", "Zahlungs-Profil")}</div>${sel("return", "RETURN_POLICY", "Rückgabe-Profil")}
+        <label class="f">Werbekampagne</label><select data-s="${s}" data-kamp><option value="">– keine (Werbung selbst / per Regel) –</option>${(dd.kampagnen || []).map(k => `<option value="${esc(k.id)}" ${c.kampagne === k.id ? "selected" : ""}>${esc(k.name)}${k.regelbasiert ? " (regelbasiert)" : ""}</option>`).join("")}</select>` : ""}
+      <label class="f">Was gehört in diesen Shop?</label><textarea data-s="${s}" data-c="fokus" rows="3">${esc(c.fokus)}</textarea>
+      <label class="f">Stilregeln</label><textarea data-s="${s}" data-c="stil" rows="3">${esc(c.stil)}</textarea>
+      <label class="f">Beschreibungsvorlage</label>
+      <select data-s="${s}" data-vorl>
+        <option value="">Automatisch: neuestes Angebot${dd?.beispiele?.[0] ? " („" + esc(dd.beispiele[0].titel) + "“)" : ""}</option>
+        ${(dd?.beispiele || []).map((b, i) => `<option value="b${i}">Wie: ${esc(b.titel)}</option>`).join("")}
+        <option value="eigen" ${c.vorlageHtml ? "selected" : ""}>Eigene Vorlage (HTML einfügen)</option>
+      </select>
+      <textarea data-s="${s}" data-c="vorlageHtml" rows="6" class="${c.vorlageHtml ? "" : "hidden"}" style="margin-top:8px;font-family:ui-monospace,Menlo,monospace;font-size:12px" placeholder="HTML-Vorlage hier einfügen">${esc(c.vorlageHtml)}</textarea>
+    </div>`;
+  }).join("");
+  $("#sPlz").value = st.standort.plz || ""; $("#sOrt").value = st.standort.ort || "";
+  $("#sWerb").value = st.werbungProzent; $("#sBO").checked = !!st.preisvorschlagErlauben; $("#sAuto").checked = !!st.autoEinstellen;
+}
+$("#shopKarten").addEventListener("click", async e => {
+  const c = e.target.dataset.connect, sy = e.target.dataset.sync;
+  if (c) { const r = await api("/ebay/connect", { method: "POST", json: { shop: c } }); location.href = r.url; }
+  if (sy) {
+    e.target.disabled = true; e.target.innerHTML = `<span class="spin"></span> lädt …`;
+    try { const r = await api("/ebay/sync", { method: "POST", json: { shop: sy } }); toast(r.hinweise?.length ? "Geladen (mit Hinweisen)" : "Shop-Daten geladen ✓"); }
+    catch (err) { toast(err.message, 5000); }
+    STATE = await api("/state"); renderEinst(); setupHinweis();
+  }
+});
+$("#shopKarten").addEventListener("change", async e => {
+  const s = e.target.dataset.s; if (e.target.dataset.vorl === undefined || !s) return;
+  const ta = $(`textarea[data-s="${s}"][data-c="vorlageHtml"]`);
+  const v = e.target.value;
+  if (v === "eigen") { ta.classList.remove("hidden"); ta.focus(); }
+  else if (v.startsWith("b")) { const d = await api("/shopdaten/" + s); ta.value = d.beispiele[+v.slice(1)].html; ta.classList.remove("hidden"); toast("Vorlage übernommen – speichern nicht vergessen."); }
+  else { ta.value = ""; ta.classList.add("hidden"); }
+});
+$("#speichernEinst").onclick = async () => {
+  const st = structuredClone(STATE.settings);
+  $$("[data-p]").forEach(el => st.shops[el.dataset.s].profile[el.dataset.p] = el.value);
+  $$("[data-kamp]").forEach(el => st.shops[el.dataset.s].kampagne = el.value);
+  $$("textarea[data-c]").forEach(el => st.shops[el.dataset.s][el.dataset.c] = el.value);
+  st.standort = { plz: $("#sPlz").value.trim(), ort: $("#sOrt").value.trim() };
+  st.werbungProzent = Number(String($("#sWerb").value).replace(",", ".")) || 5;
+  st.preisvorschlagErlauben = $("#sBO").checked; st.autoEinstellen = $("#sAuto").checked;
+  STATE.settings = await api("/settings", { method: "PUT", json: st });
+  setupHinweis(); toast("Gespeichert ✓"); ladeDrafts();
+};
+
+// ---------- Los ----------
+if (KEY) start(); else fetch("/api/auth/check").then(r => r.json()).then(j => zeigeLogin(j.fehler === "setup"));
+</script>
+</body>
+</html>

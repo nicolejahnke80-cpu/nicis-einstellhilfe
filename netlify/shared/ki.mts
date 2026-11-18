@@ -1,9 +1,35 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { db, getJSON, getSettings, imgKey, type Shop } from "./store.mts";
 import { kategorieVorschlaege, merkmaleFuer, vergleichsAngebote, zustaendeFuer } from "./ebay.mts";
 
 const MODELL = () => Netlify.env.get("KI_MODELL") || "claude-sonnet-5-5";
 const MAX_KI_BILDER = 8;
+
+/** Schlanker Claude-Client (Netlify AI Gateway setzt ANTHROPIC_API_KEY/ANTHROPIC_BASE_URL automatisch) */
+function claude() {
+  const key = Netlify.env.get("ANTHROPIC_API_KEY") || process.env.ANTHROPIC_API_KEY;
+  const base = (Netlify.env.get("ANTHROPIC_BASE_URL") || process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
+  if (!key) throw new Error("Kein KI-Zugang: ANTHROPIC_API_KEY fehlt (AI Gateway noch nicht aktiv?).");
+  return {
+    messages: {
+      async create(body: any) {
+        for (let versuch = 0; versuch < 3; versuch++) {
+          const r = await fetch(`${base}/v1/messages`, {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
+            body: JSON.stringify(body),
+          });
+          const j: any = await r.json().catch(() => ({}));
+          if (r.ok) return j;
+          if ((r.status === 429 || r.status >= 500) && versuch < 2) {
+            await new Promise((ok) => setTimeout(ok, 4000 * (versuch + 1)));
+            continue;
+          }
+          throw new Error(`KI-Fehler ${r.status}: ${j?.error?.message || "unbekannt"}`);
+        }
+      },
+    },
+  };
+}
 
 const STANDARD_VORLAGE: Record<Shop, string> = {
   nicideen: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:800px;margin:0 auto;background:#f2f2f2;padding:24px;border-radius:12px;color:#333">
@@ -108,7 +134,7 @@ function toolInput(msg: any, name: string) {
 export async function analysiere(draft: any) {
   const s = await getSettings();
   const [dN, dW] = await Promise.all([getJSON("shopdaten/nicideen"), getJSON("shopdaten/wonderland")]);
-  const client = new Anthropic();
+  const client = claude();
 
   // --- Bilder laden ---
   const n = Math.min(draft.bilder, MAX_KI_BILDER);

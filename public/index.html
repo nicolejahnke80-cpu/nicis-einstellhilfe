@@ -515,7 +515,11 @@ function oeffne(id) {
     <div>
       <div class="bilder">${Array.from({ length: d.bilder }, (_, i) => `<img src="${bildUrl(d, i)}" loading="lazy">`).join("")}</div>
       <div class="box info"><b>KI:</b> ${esc(d.ki?.artikel || "")}<br>Sicherheit: <b>${esc(d.ki?.sicherheit || "–")}</b>${d.ki?.hinweise ? `<br>${esc(d.ki.hinweise)}` : ""}</div>
-      ${d.hinweis ? `<div class="box">Dein Hinweis: ${esc(d.hinweis)}</div>` : ""}
+      <label class="f">Deine Infos / Änderungswunsch</label>
+      <textarea id="wunsch-${id}" rows="3" placeholder="z. B. original LEGO, vollständig, mit Motor, getestet – oder: schreib rein, dass …"></textarea>
+      <div class="row" style="margin-top:8px"><button class="btn p s" data-a="anpassen">✎ Text anpassen</button><button class="btn s" data-a="neu">Neu mit Fotos analysieren</button></div>
+      <div class="small mut" style="margin-top:6px">„Text anpassen“ ändert Titel, Zustand und Beschreibung nach deinen Infos (schnell, günstig). „Neu mit Fotos“ macht alles komplett neu.</div>
+      ${d.hinweis ? `<div class="box">Bisherige Infos: ${esc(d.hinweis).replace(/\n/g, "<br>")}</div>` : ""}
     </div>
     <div>
       ${d.fehler ? `<div class="box err" style="margin-top:0"><b>eBay sagt:</b> ${esc(d.fehler)}</div>` : ""}
@@ -614,7 +618,14 @@ function bindAktionen(w, d, speichern) {
     e.preventDefault();
     if (a === "html") { const ta = $("[data-k=beschreibung]", w); ta.classList.toggle("hidden"); $("iframe.vs", w).classList.toggle("hidden"); return; }
     if (a === "del") { if (!confirm("Diesen Entwurf wirklich löschen?")) return; await api(`/drafts/${d.id}`, { method: "DELETE" }); OFFEN = null; return ladeDrafts(); }
-    if (a === "neu") { await fetch("/api/analyse", { method: "POST", headers: { "x-key": KEY, "content-type": "application/json" }, body: JSON.stringify({ id: d.id }) }); toast("Wird neu analysiert …"); setTimeout(ladeDrafts, 1500); OFFEN = null; return; }
+    if (a === "anpassen" || a === "neu") {
+      const wunsch = ($("#wunsch-" + d.id)?.value || "").trim();
+      if (a === "anpassen" && !wunsch) { toast("Schreib zuerst deine Infos oder deinen Wunsch ins Feld."); $("#wunsch-" + d.id)?.focus(); return; }
+      if (a === "neu" && wunsch) await api(`/drafts/${d.id}`, { method: "PUT", json: { hinweis: [d.hinweis, wunsch].filter(Boolean).join("\n") } });
+      await fetch("/api/analyse", { method: "POST", headers: { "x-key": KEY, "content-type": "application/json" }, body: JSON.stringify(a === "anpassen" ? { id: d.id, modus: "anpassen", wunsch } : { id: d.id }) });
+      toast(a === "anpassen" ? "Text wird angepasst … (ca. 30 Sekunden)" : "Wird neu analysiert …");
+      setTimeout(ladeDrafts, 1500); return;
+    }
     if (a === "go" || a === "pruefen") {
       const btn = e.target; btn.disabled = true; const alt = btn.textContent; btn.innerHTML = `<span class="spin"></span> ${a === "go" ? "Stelle ein …" : "Prüfe …"}`;
       try {

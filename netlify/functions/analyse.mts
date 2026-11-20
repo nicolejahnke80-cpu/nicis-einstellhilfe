@@ -1,12 +1,12 @@
 import type { Config } from "@netlify/functions";
 import { checkAuth, getDraft, getSettings, saveDraft } from "../shared/store.mts";
-import { analysiere, fehlendeAngaben } from "../shared/ki.mts";
+import { analysiere, anpassen, fehlendeAngaben } from "../shared/ki.mts";
 import { einstellen } from "../shared/einstellen.mts";
 
 // Hintergrund-Funktion: darf bis zu 15 Minuten laufen, Ergebnis landet im Entwurf.
 export default async (req: Request) => {
   if ((await checkAuth(req)) !== "ok") return;
-  const { id } = await req.json().catch(() => ({}));
+  const { id, modus, wunsch } = await req.json().catch(() => ({}));
   if (!id) return;
   const d: any = await getDraft(id);
   if (!d) return;
@@ -15,6 +15,25 @@ export default async (req: Request) => {
   d.fehler = "";
   d.analyseStart = Date.now();
   await saveDraft(d);
+
+  if (modus === "anpassen" && wunsch) {
+    try {
+      const r = await anpassen(d, String(wunsch).slice(0, 2000));
+      const aktuell: any = (await getDraft(id)) || d;
+      Object.assign(aktuell, r, {
+        status: "fertig",
+        hinweis: [aktuell.hinweis, String(wunsch)].filter(Boolean).join("\n").slice(0, 4000),
+        geprueft: null,
+      });
+      await saveDraft(aktuell);
+    } catch (e: any) {
+      const aktuell: any = (await getDraft(id)) || d;
+      aktuell.status = "fertig";
+      aktuell.fehler = `Anpassen hat nicht geklappt: ${e?.message || e}`;
+      await saveDraft(aktuell);
+    }
+    return;
+  }
 
   try {
     const r = await analysiere(d);

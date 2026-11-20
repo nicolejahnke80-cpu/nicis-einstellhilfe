@@ -292,6 +292,65 @@ ${vergText || "(keine gefunden)"}`,
   };
 }
 
+const ANPASSEN_TOOL: any = {
+  name: "angebot_anpassen",
+  description: "Gibt die angepassten Texte zurück.",
+  input_schema: {
+    type: "object",
+    properties: {
+      titel: { type: "string", description: "Titel (max. 80 Zeichen). Unverändert lassen, wenn der Wunsch ihn nicht betrifft." },
+      zustand_text: { type: "string", description: "Zustandsbeschreibung (max. 1000 Zeichen)." },
+      beschreibung_html: { type: "string", description: "Komplette Beschreibung als HTML – Aufbau, Design, Farben und feste Textbausteine exakt beibehalten." },
+      merkmale: { type: "object", description: "Nur Merkmale, die sich durch die neuen Infos ändern (Name → Wert). Sonst leer.", additionalProperties: { type: "string" } },
+    },
+    required: ["titel", "zustand_text", "beschreibung_html"],
+  },
+};
+
+/** Texte eines fertigen Entwurfs nach Nicoles Infos/Wunsch anpassen (ohne Fotos, günstig) */
+export async function anpassen(d: any, wunsch: string) {
+  const client = claude();
+  const m = await client.messages.create({
+    model: MODELL(),
+    max_tokens: 8000,
+    tools: [ANPASSEN_TOOL],
+    tool_choice: { type: "auto" },
+    messages: [{
+      role: "user",
+      content: `Du bist die Einstellhilfe von Nicole (eBay-Händlerin). Hier ist ein fertiger Angebotsentwurf. Nicole hat neue Infos bzw. einen Änderungswunsch. Passe die Texte entsprechend an.
+
+Regeln:
+- Alles auf Deutsch, in ihrem Stil.
+- Beschreibung: HTML-Aufbau, CSS, Farben, Überschriften und feste Textbausteine exakt beibehalten; nur Inhalte ändern/ergänzen.
+- Was Nicole sagt, gilt (z. B. „getestet, funktioniert“, „vollständig“, „mit Anleitung“). Widersprüchliche alte Aussagen (z. B. „kann nicht beurteilt werden“) entfernen.
+- Sonst nichts erfinden.
+- Titel nur ändern, wenn der Wunsch ihn betrifft oder eine neue Info für Käufer wichtig ist (max. 80 Zeichen, Emoji-Stil beibehalten).
+
+Nicoles Infos / Wunsch:
+${wunsch}
+
+Artikel: ${d.ki?.artikel || ""}
+Aktueller Titel: ${d.titel}
+Aktuelle Zustandsbeschreibung: ${d.zustandText || ""}
+Aktuelle Merkmale: ${JSON.stringify(d.merkmale || {})}
+
+Aktuelle Beschreibung (HTML):
+${d.beschreibung || ""}
+
+Antworte ausschließlich über das Werkzeug angebot_anpassen.`,
+    }],
+  });
+  const a = toolInput(m, "angebot_anpassen");
+  const merkmale = { ...(d.merkmale || {}) };
+  for (const [k, v] of Object.entries(a.merkmale || {})) if (String(v).trim()) merkmale[k] = [String(v)];
+  return {
+    titel: String(a.titel || d.titel).slice(0, 80),
+    zustandText: a.zustand_text || d.zustandText,
+    beschreibung: a.beschreibung_html || d.beschreibung,
+    merkmale,
+  };
+}
+
 /** Fehlende Pflichtangaben für das Einstellen */
 export function fehlendeAngaben(d: any, s: any) {
   const f: string[] = [];

@@ -40,6 +40,16 @@ export default async (req: Request, context: Context) => {
       if (!modified) return json({ fehler: "Passwort ist schon festgelegt." }, 409);
       return json({ ok: true });
     }
+    // eBay-Pflicht: Benachrichtigung über gelöschte eBay-Konten (wir speichern keine Daten fremder Nutzer)
+    if (path === "/ebay/loeschung") {
+      if (m === "GET") {
+        const code = url.searchParams.get("challenge_code") || "";
+        const token = Netlify.env.get("EBAY_LOESCH_TOKEN") || "nicis_einstellhilfe_1acc000b8f6f29169214c5c5f923d2d4";
+        const endpoint = `${url.origin}/api/ebay/loeschung`;
+        return json({ challengeResponse: await sha(code + token + endpoint) });
+      }
+      return new Response(null, { status: 200 });
+    }
     if (m === "GET" && path === "/ebay/callback") {
       const code = url.searchParams.get("code");
       const state = url.searchParams.get("state") || "";

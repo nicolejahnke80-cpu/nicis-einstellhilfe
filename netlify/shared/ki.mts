@@ -126,9 +126,15 @@ const DETAILS_TOOL: any = {
 };
 
 function toolInput(msg: any, name: string) {
-  const b = msg.content.find((c: any) => c.type === "tool_use" && c.name === name);
-  if (!b) throw new Error("Die KI hat keinen Entwurf geliefert.");
-  return b.input;
+  const b = (msg.content || []).find((c: any) => c.type === "tool_use" && c.name === name);
+  if (b) return b.input;
+  // Rückfall: JSON aus dem Text lesen
+  const text = (msg.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n");
+  const start = text.indexOf("{"), ende = text.lastIndexOf("}");
+  if (start >= 0 && ende > start) {
+    try { return JSON.parse(text.slice(start, ende + 1)); } catch {}
+  }
+  throw new Error("Die KI hat keinen Entwurf geliefert.");
 }
 
 export async function analysiere(draft: any) {
@@ -164,14 +170,14 @@ ${shopBlock("wonderland", s, dW)}`;
   if (draft.hinweis) nutzer.push(`Hinweis von Nicole: ${draft.hinweis}`);
   if (draft.shopWunsch && draft.shopWunsch !== "auto") nutzer.push(`Shop ist vorgegeben: ${draft.shopWunsch}`);
   if (draft.preisWunsch) nutzer.push(`Preiswunsch von Nicole: ${draft.preisWunsch} €`);
-  nutzer.push("Erstelle das Angebot und gib es über das Werkzeug angebot_entwurf zurück.");
+  nutzer.push("Erstelle das Angebot und gib es AUSSCHLIESSLICH über das Werkzeug angebot_entwurf zurück (kein weiterer Text).");
 
   const m1 = await client.messages.create({
     model: MODELL(),
     max_tokens: 10000,
     system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
     tools: [ANGEBOT_TOOL],
-    tool_choice: { type: "tool", name: "angebot_entwurf" },
+    tool_choice: { type: "auto" },
     messages: [{ role: "user", content: [...bilder, { type: "text", text: nutzer.join("\n") }] }],
   });
   const a = toolInput(m1, "angebot_entwurf");
@@ -232,7 +238,7 @@ ${k.aspekte
       model: MODELL(),
       max_tokens: 3000,
       tools: [DETAILS_TOOL],
-      tool_choice: { type: "tool", name: "ebay_details" },
+      tool_choice: { type: "auto" },
       messages: [
         {
           role: "user",
@@ -242,6 +248,8 @@ Zustand laut Fotos: ${a.zustand_stufe} – ${a.zustand_text}
 Erkannte Merkmale: ${JSON.stringify(a.merkmale)}
 ${a.ean ? `EAN: ${a.ean}` : ""}
 Preis-Idee: ${a.preis_idee ?? "–"} €${draft.preisWunsch ? `\nPreiswunsch von Nicole: ${draft.preisWunsch} € (dann diesen nehmen)` : ""}
+
+Antworte ausschließlich über das Werkzeug ebay_details (kein weiterer Text).
 
 Wähle die passendste eBay-Kategorie, den passenden Zustand (ID aus der Liste dieser Kategorie) und fülle die Merkmale dieser Kategorie aus (alle PFLICHT-Merkmale unbedingt; bei „nur Werte aus Liste“ exakt einen Listenwert; sonst sinnvolle Werte, unbekanntes weglassen).
 

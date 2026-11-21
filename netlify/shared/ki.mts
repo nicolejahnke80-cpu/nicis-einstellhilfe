@@ -99,7 +99,7 @@ const ANGEBOT_TOOL: any = {
       beschreibung_html: { type: "string", description: "Komplette Artikelbeschreibung als HTML nach der Vorlage des gewählten Shops." },
       preis_idee: { type: "number", description: "Grobe eigene Preis-Idee in Euro (wird später mit echten eBay-Angeboten abgeglichen)." },
       sicherheit: { type: "string", enum: ["hoch", "mittel", "niedrig"], description: "Wie sicher ist die Erkennung insgesamt?" },
-      hinweise: { type: "string", description: "Kurze Hinweise an Nicole: Unsicherheiten, was sie prüfen/ergänzen sollte. Leer, wenn nichts." },
+      hinweise: { type: "string", description: "Höchstens EINE kurze Rückfrage an Nicole (max. 15 Wörter), nur wenn sie für Käufer wirklich wichtig ist und auf den Fotos nicht erkennbar ist (z. B. „Funktioniert es?“). Sonst leer." },
     },
     required: ["artikel", "shop", "suchbegriff", "titel", "zustand_stufe", "zustand_text", "merkmale", "beschreibung_html", "sicherheit"],
   },

@@ -82,6 +82,18 @@ textarea{resize:vertical;min-height:70px}
 .dz{display:grid;grid-template-columns:76px 1fr auto;gap:14px;align-items:center;cursor:pointer}
 .dz img{width:76px;height:76px;border-radius:10px;object-fit:cover;background:#eee}
 .dz .t{font-weight:600}
+.pr.ok{border-color:var(--ok);box-shadow:0 0 0 2px var(--okbg)}
+.pz{display:grid;grid-template-columns:130px 1fr 150px;gap:16px;align-items:start}
+.pz img{width:130px;height:130px;border-radius:12px;object-fit:cover;background:#eee;cursor:zoom-in}
+.pz .tz{display:flex;gap:8px;align-items:center}
+.pz .tz input{font-weight:600}
+.pz .zeile{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.pz .preis{width:100px}
+.pz .shopsel{width:auto}
+.pz .kat{font-size:12.5px;color:var(--mut)}
+.pz .frage{margin-top:8px;font-size:13.5px;background:var(--acc2);color:#4b2766;border-radius:8px;padding:6px 10px}
+.pz .rechts{display:flex;flex-direction:column;gap:8px;align-items:stretch}
+@media (max-width:900px){.pz{grid-template-columns:90px 1fr}.pz img{width:90px;height:90px}.pz .rechts{grid-column:span 2;flex-direction:row}}
 .ed{display:grid;grid-template-columns:330px 1fr;gap:22px;margin-top:16px;border-top:1px solid var(--line);padding-top:16px}
 .ed .bilder{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-content:start}
 .ed .bilder img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#eee}
@@ -158,9 +170,9 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acc)
   <!-- ENTWÜRFE -->
   <section id="tab-entw" class="hidden">
     <div class="row" style="margin-bottom:14px">
-      <div><h2>Entwürfe</h2><div class="mut small">Kurz prüfen, ggf. anpassen, dann einstellen. Änderungen werden automatisch gespeichert.</div></div>
+      <div><h2>Entwürfe</h2><div class="mut small">Titel und Preis direkt ändern · Infos für die KI unten eintippen + Enter · passt alles: „✓ Passt“ · am Ende „Abgehakte einstellen“.</div></div>
       <div class="sp"></div>
-      <button class="btn g" id="alleEinstellen">Alle fertigen einstellen</button>
+      <button class="btn g" id="alleEinstellen">Abgehakte einstellen</button>
     </div>
     <div class="dl" id="entwListe"></div>
   </section>
@@ -451,7 +463,9 @@ async function ladeDrafts() {
   try { DRAFTS = await api("/drafts"); } catch { return; }
   const entw = DRAFTS.filter(d => d.status !== "eingestellt"), fertig = DRAFTS.filter(d => d.status === "eingestellt");
   $("#nEntw").textContent = entw.length; $("#nFertig").textContent = fertig.length;
-  renderEntw(entw); renderFertig(fertig);
+  const tippt = document.activeElement?.closest?.("#entwListe") && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if (!tippt) renderEntw(entw);
+  renderFertig(fertig);
   clearTimeout(pollT);
   if (DRAFTS.some(d => ["neu", "analysiere", "einstellen"].includes(d.status))) pollT = setTimeout(ladeDrafts, 4000);
 }
@@ -471,7 +485,7 @@ function renderEntw(list) {
   if (!list.length) { L.innerHTML = `<div class="leer">Noch keine Entwürfe. Zieh Fotos in „Neue Artikel“.</div>`; return; }
   // offenen Editor nicht neu zeichnen, solange darin gearbeitet wird
   const offen = OFFEN && L.querySelector(`[data-id="${OFFEN}"] .ed`);
-  L.innerHTML = list.map(d => `
+  L.innerHTML = list.map(d => d.status === "fertig" ? pruefKarte(d) : `
     <div class="card" data-id="${d.id}">
       <div class="dz" data-open="${d.id}">
         <img src="${d.bilder ? bildUrl(d, 0) : ""}" loading="lazy">
@@ -481,15 +495,88 @@ function renderEntw(list) {
       </div>
       <div class="edw"></div>
     </div>`).join("");
+  const n = list.filter(d => d.abgehakt && d.status === "fertig").length;
+  $("#alleEinstellen").textContent = n ? `Abgehakte einstellen (${n})` : "Abgehakte einstellen";
   if (OFFEN && list.find(d => d.id === OFFEN && d.status === "fertig")) {
     const card = L.querySelector(`[data-id="${OFFEN}"] .edw`);
     if (offen) card.replaceWith(offen.parentElement); else oeffne(OFFEN);
   }
 }
-$("#entwListe").addEventListener("click", e => {
+function pruefKarte(d) {
+  const kat = (d.kategorien || []).find(k => k.id === d.kategorieId);
+  const skat = (STATE?.shops?.[d.shop]?.daten?.storeKategorien || []).find(k => k.id === d.shopKategorieId);
+  const katKurz = kat ? kat.pfad.split(" > ").slice(-2).join(" › ") : "Kategorie fehlt";
+  return `
+    <div class="card pr ${d.abgehakt ? "ok" : ""}" data-id="${d.id}">
+      <div class="pz">
+        <img src="${d.bilder ? bildUrl(d, 0) : ""}" loading="lazy" data-open="${d.id}" title="Details öffnen">
+        <div>
+          <div class="tz"><input type="text" data-q="titel" value="${esc(d.titel)}" maxlength="80"><span class="small mut" data-cnt>${[...(d.titel || "")].length}/80</span></div>
+          <div class="zeile">
+            <input type="text" class="preis" data-q="preis" value="${String(d.preis ?? "").replace(".", ",")}"> <span>€</span>
+            <select class="shopsel" data-q="shop">${["nicideen", "wonderland"].map(s => `<option value="${s}" ${d.shop === s ? "selected" : ""}>${SHOPNAME[s]}</option>`).join("")}</select>
+            <span class="kat">${esc(katKurz)}${skat ? " · Shop: " + esc(skat.pfad.split(" > ").pop()) : ""}</span>
+          </div>
+          ${d.ki?.hinweise ? `<div class="frage">💬 ${esc(d.ki.hinweise)}</div>` : ""}
+          ${d.fehler ? `<div class="box err">${esc(d.fehler)}</div>` : ""}
+          ${d.fehlt?.length ? `<div class="box warn" style="padding:6px 10px">Fehlt: ${d.fehlt.map(esc).join(", ")}</div>` : ""}
+          <div class="zeile"><input type="text" data-q="wunsch" placeholder="Info für die KI, z. B. „getestet, läuft, ohne OVP“ – dann Enter" style="flex:1"><button class="btn s" data-qa="anpassen">✎ Anpassen</button></div>
+        </div>
+        <div class="rechts">
+          ${statusChip(d)}
+          <button class="btn ${d.abgehakt ? "g" : ""}" data-qa="passt">${d.abgehakt ? "✓ Abgehakt" : "✓ Passt"}</button>
+          <button class="btn s" data-open="${d.id}">Details ▾</button>
+        </div>
+      </div>
+      <div class="edw"></div>
+    </div>`;
+}
+const qTimer = {};
+$("#entwListe").addEventListener("input", e => {
+  const q = e.target.dataset.q; if (!q || q === "wunsch" || q === "shop") return;
+  const card = e.target.closest("[data-id]"), id = card.dataset.id;
+  if (q === "titel") { const c = $("[data-cnt]", card); c.textContent = [...e.target.value].length + "/80"; }
+  clearTimeout(qTimer[id + q]);
+  qTimer[id + q] = setTimeout(async () => {
+    const r = await api(`/drafts/${id}`, { method: "PUT", json: { [q]: e.target.value } });
+    const d = DRAFTS.find(x => x.id === id); if (d) Object.assign(d, r);
+  }, 600);
+});
+$("#entwListe").addEventListener("change", async e => {
+  if (e.target.dataset.q !== "shop") return;
+  const id = e.target.closest("[data-id]").dataset.id;
+  await api(`/drafts/${id}`, { method: "PUT", json: { shop: e.target.value, shopKategorieId: "" } });
+  toast("Shop geändert – bitte Shop-Kategorie in den Details wählen.");
+  ladeDrafts();
+});
+async function schnellAnpassen(card) {
+  const id = card.dataset.id, inp = $("[data-q=wunsch]", card), wunsch = inp.value.trim();
+  if (!wunsch) { inp.focus(); return toast("Erst eine Info eintippen, z. B. „getestet, läuft“."); }
+  inp.value = ""; inp.blur();
+  await fetch("/api/analyse", { method: "POST", headers: { "x-key": KEY, "content-type": "application/json" }, body: JSON.stringify({ id, modus: "anpassen", wunsch }) });
+  toast("Wird angepasst … du kannst schon den nächsten Artikel prüfen.");
+  setTimeout(ladeDrafts, 1500);
+}
+$("#entwListe").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.dataset.q === "wunsch") { e.preventDefault(); schnellAnpassen(e.target.closest("[data-id]")); }
+});
+$("#entwListe").addEventListener("click", async e => {
+  const qa = e.target.dataset.qa;
+  if (qa === "anpassen") return schnellAnpassen(e.target.closest("[data-id]"));
+  if (qa === "passt") {
+    const card = e.target.closest("[data-id]"), id = card.dataset.id, d = DRAFTS.find(x => x.id === id);
+    const neu = !d.abgehakt;
+    if (neu && d.fehlt?.length) return toast("Erst ergänzen: " + d.fehlt.join(", "));
+    d.abgehakt = neu; card.classList.toggle("ok", neu);
+    e.target.textContent = neu ? "✓ Abgehakt" : "✓ Passt"; e.target.classList.toggle("g", neu);
+    await api(`/drafts/${id}`, { method: "PUT", json: { abgehakt: neu } });
+    const n = DRAFTS.filter(x => x.abgehakt && x.status === "fertig").length;
+    $("#alleEinstellen").textContent = n ? `Abgehakte einstellen (${n})` : "Abgehakte einstellen";
+    return;
+  }
   const o = e.target.closest("[data-open]"); if (!o) return;
-  const id = o.dataset.open;
-  if (OFFEN === id) { OFFEN = null; o.parentElement.querySelector(".edw").innerHTML = ""; return; }
+  const id = o.dataset.open, edw = o.closest("[data-id]").querySelector(".edw");
+  if (OFFEN === id) { OFFEN = null; edw.innerHTML = ""; return; }
   $$(".edw").forEach(x => x.innerHTML = ""); oeffne(id);
 });
 
@@ -641,8 +728,8 @@ function bindAktionen(w, d, speichern) {
 }
 
 $("#alleEinstellen").onclick = async () => {
-  const bereit = DRAFTS.filter(d => d.status === "fertig" && !d.fehlt?.length && !d.fehler);
-  if (!bereit.length) return toast("Kein Entwurf ist bereit (grün markiert).");
+  const bereit = DRAFTS.filter(d => d.status === "fertig" && d.abgehakt && !d.fehlt?.length);
+  if (!bereit.length) return toast("Noch nichts abgehakt – bei jedem fertigen Artikel auf „✓ Passt“ klicken.");
   if (!confirm(`${bereit.length} Artikel jetzt bei eBay einstellen?`)) return;
   const b = $("#alleEinstellen"); b.disabled = true; let ok = 0, err = 0;
   for (const d of bereit) {
@@ -650,7 +737,7 @@ $("#alleEinstellen").onclick = async () => {
     const r = await api(`/drafts/${d.id}/einstellen`, { method: "POST", json: { pruefen: false }, roh: true }).catch(() => ({ ok: false }));
     r.ok ? ok++ : err++;
   }
-  b.disabled = false; b.textContent = "Alle fertigen einstellen";
+  b.disabled = false; b.textContent = "Abgehakte einstellen";
   toast(`${ok} eingestellt${err ? `, ${err} mit Fehler` : ""}.`, 4000);
   ladeDrafts();
 };

@@ -156,7 +156,15 @@ export async function analysiere(draft: any) {
 Grundregeln:
 - Alles auf Deutsch.
 - Wähle den passenden Shop anhand von „Was gehört hierher“ und ihrer Shop-Kategorien.
-- Titel: max. 80 Zeichen, im Stil ihrer echten Titel (Aufbau, Reihenfolge, Schreibweise, Emoji-Regeln des Shops). Wichtige Suchbegriffe nach vorn. Keine Wörter wie „TOP“, „L@@K“, keine Großbuchstaben-Orgien, außer sie macht das selbst so.
+- Titel: max. 80 Zeichen. Emoji-Regeln des Shops beibehalten (höchstens ein Emoji, ganz vorn). Die folgenden Titelregeln haben Vorrang vor dem Stil ihrer alten Titel:
+  - Aufbau: Marke → Serie/Modell → exakte Modell-, Set- oder Artikelnummer (wenn auf den Fotos lesbar oder im Hinweis genannt) → was es ist → Größe/Farbe/Plattform → Zustand und Extras (z. B. OVP, komplett, mit Anleitung, getestet – nur wenn belegt). Die Suchbegriffe, die ein Käufer eintippen würde, nach vorn.
+  - Videospiele: Spielname + Konsole ausgeschrieben + Kürzel (z. B. „Super Nintendo SNES“, „Nintendo 64 N64“) + PAL + Modul/Disc + OVP/komplett/Anleitung + Erscheinungsjahr, wenn bekannt.
+  - Sammelkarten: Name + Set + Kartennummer + Seltenheit + Sprache + Zustand (z. B. NM).
+  - LEGO: LEGO + Themenwelt + Setnummer + Setname + Vollständigkeit.
+  - Tupperware und Haushalt: Marke + Serienname (z. B. UltraPro, MicroFix, Eidgenossen, Reis-Meister) + Größe in L/ml + Art des Teils + Farbe.
+  - Telefone, Technik, Ersatzteile: Marke + exakte Modellbezeichnung (z. B. „Gigaset C430HX“, „Braun K3000 3210“) + was es ist + Zubehör/Zustand.
+  - Mängel im Titel konkret und kurz benennen, z. B. „ohne Anleitung“, „2 Figuren fehlen“, „Defekt“, „Akku schwach“. NIE „LESEN“, „!!!“, Fragezeichen oder andere unklare Warnungen – auch wenn alte Titel so etwas enthalten.
+  - Keine Füllwörter („für“, „super“, „toll“, „schön“), keine Wörter wie „TOP“, „L@@K“, keine Großbuchstaben-Orgien. Wörter nicht doppelt.
 - Beschreibung: Übernimm die Vorlage des gewählten Shops 1:1 in Aufbau, HTML, CSS, Farben, Überschriften und festen Textbausteinen (z. B. Versand-, Rechts- oder Grußtexte). Ersetze nur die artikelbezogenen Inhalte. Kein JavaScript, keine externen Bilder einfügen.
 - Ehrlich bleiben: Nichts behaupten, was nicht auf den Fotos zu sehen ist oder im Hinweis von Nicole steht (z. B. „getestet“, „funktioniert“, „vollständig“). Sichtbare Mängel nennen.
 - Sie zahlt den Versand selbst (für Käufer versandkostenfrei) – das darf in Titel/Beschreibung nur stehen, wenn es in ihrer Vorlage so steht.

@@ -20,3 +20,6 @@ Mac-Web-App: Fotos rein → KI (Claude über Netlify AI Gateway oder eigener ANT
 3. eBay-Entwicklerportal: RuName „Auth accepted URL“ = https://nicis-einstellhilfe.netlify.app/api/ebay/callback, Privacy-URL = https://nicis-einstellhilfe.netlify.app/datenschutz.html
 4. In der App: Passwort festlegen, beide Shops verbinden (jeweils eigenes eBay-Konto), Shop-Daten laden, Profile/Kampagne/PLZ wählen
 5. Erster echter Test mit „Nur prüfen“ (eBay- und KI-Teil sind ungetestet, nur UI mit Mock getestet)
+
+## Änderung 24.11.2026
+- Titelregeln im KI-Prompt (netlify/shared/ki.mts, analysiere) verschärft: Marke → Serie/Modell → Modell-/Setnummer → Artikelart → Größe/Farbe/Plattform → Zustand; eigene Muster für Videospiele, Sammelkarten, LEGO, Tupperware/Haushalt, Telefone/Technik/Ersatzteile; Mängel konkret statt „LESEN!!!“; keine Füllwörter. Diese Regeln haben Vorrang vor dem Stil der alten Titel.

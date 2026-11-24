@@ -518,7 +518,7 @@ function pruefKarte(d) {
           <div class="tz"><input type="text" data-q="titel" value="${esc(d.titel)}" maxlength="80"><span class="small mut" data-cnt>${[...(d.titel || "")].length}/80</span></div>
           <div class="zeile">
             <input type="text" class="preis" data-q="preis" value="${String(d.preis ?? "").replace(".", ",")}"> <span>€</span>
-            <input type="text" class="preis" style="width:70px" data-q="lagerplatz" placeholder="Lager #" title="Lagerplatz, z. B. 17 – kommt klein in die Beschreibung und als Bestandseinheit" value="${esc(d.lagerplatz || "")}">
+            <input type="text" class="preis" style="width:70px" data-q="lagerplatz" placeholder="Lager #" title="Lagerplatz, z. B. 17 – kommt ans Ende des Titels und als Bestandseinheit" value="${esc(d.lagerplatz || "")}">
             <input type="number" class="preis" style="width:70px" min="1" max="999" data-q="menge" title="Stückzahl" value="${d.menge || 1}"><span class="small mut">Stk.</span>
             <select class="shopsel" data-q="shop">${["nicideen", "wonderland"].map(s => `<option value="${s}" ${d.shop === s ? "selected" : ""}>${SHOPNAME[s]}</option>`).join("")}</select>
             <span class="kat">${esc(katKurz)}${skat ? " · Shop: " + esc(skat.pfad.split(" > ").pop()) : ""}</span>

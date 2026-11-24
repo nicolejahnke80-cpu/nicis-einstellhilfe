@@ -23,7 +23,19 @@ async function bilderHochladen(d: any) {
   d.ebayBilder = d.ebayBilder.slice(0, Math.min(d.bilder, 24));
 }
 
-/** Lagerplatz (z. B. #17) unten klein in die Beschreibung – zum Wiederfinden im Lager */
+/** Lagerplatz (z. B. #17) ans Ende des Titels – Titel wird bei Bedarf gekürzt (max. 80 Zeichen) */
+export function titelMitLager(titel: string, tag: string) {
+  const t = [...String(titel || "").replace(/\s*#\S+\s*$/, "").trim()];
+  if (!tag) return t.slice(0, 80).join("");
+  const platz = 80 - [...tag].length - 1;
+  let w = t.join("").split(/\s+/);
+  // ganze Wörter von hinten weglassen, bis es passt
+  while (w.length > 1 && [...w.join(" ")].length > platz) w.pop();
+  const kurz = [...w.join(" ")].slice(0, platz).join("");
+  return `${kurz} ${tag}`;
+}
+
+/** (nicht mehr genutzt) Lagerplatz unten in die Beschreibung */
 function mitLagerplatz(html: string, tag: string) {
   if (!tag || html.includes(tag)) return html;
   const zeile = `<p style="margin:14px 0 0;font-size:12px;color:#888">${esc(tag)}</p>`;
@@ -44,8 +56,8 @@ function itemXml(d: any, s: any) {
     .join("");
   const zustandText = d.zustandId !== "1000" && d.zustandText ? `<ConditionDescription>${esc(String(d.zustandText).slice(0, 1000))}</ConditionDescription>` : "";
   return `<Item>
-<Title>${esc(String(d.titel).slice(0, 80))}</Title>
-<Description>${cdata(mitLagerplatz(d.beschreibung || "", d.lagerplatz))}</Description>
+<Title>${esc(titelMitLager(d.titel, d.lagerplatz))}</Title>
+<Description>${cdata(d.beschreibung || "")}</Description>
 <PrimaryCategory><CategoryID>${esc(d.kategorieId)}</CategoryID></PrimaryCategory>
 <StartPrice currencyID="EUR">${Number(d.preis).toFixed(2)}</StartPrice>
 <ConditionID>${esc(d.zustandId)}</ConditionID>${zustandText}

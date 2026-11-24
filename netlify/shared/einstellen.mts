@@ -26,7 +26,11 @@ async function bilderHochladen(d: any) {
 /** Lagerplatz (z. B. #17) unten klein in die Beschreibung – zum Wiederfinden im Lager */
 function mitLagerplatz(html: string, tag: string) {
   if (!tag || html.includes(tag)) return html;
-  return `${html}\n<p style="font-size:11px;color:#aaa;text-align:right;margin:8px 0 0">${esc(tag)}</p>`;
+  const zeile = `<p style="margin:14px 0 0;font-size:12px;color:#888">${esc(tag)}</p>`;
+  // als letzte Zeile INNERHALB des Beschreibungs-Designs (vor dem letzten </div>)
+  const t = html.trimEnd(), i = t.toLowerCase().lastIndexOf("</div>");
+  if (i >= 0 && t.slice(i + 6).trim() === "") return t.slice(0, i) + zeile + t.slice(i);
+  return `${t}\n${zeile}`;
 }
 
 function itemXml(d: any, s: any) {

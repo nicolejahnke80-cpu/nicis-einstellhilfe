@@ -317,7 +317,7 @@ const nurBilder = files => files.filter(f => f && (f.type.startsWith("image/") |
 function neuerArtikel(files, name = "") {
   files = nurBilder(files).slice(0, 24);
   if (!files.length) return;
-  neue.push({ id: Math.random().toString(36).slice(2), name, files, haupt: 0, hinweis: "", shopWunsch: "auto", preisWunsch: "", urls: files.map(f => URL.createObjectURL(f)) });
+  neue.push({ id: Math.random().toString(36).slice(2), name, files, haupt: 0, hinweis: "", shopWunsch: "auto", preisWunsch: "", lagerplatz: "", menge: 1, urls: files.map(f => URL.createObjectURL(f)) });
   aktiv = neue.length - 1; neuerFaellig = false;
 }
 function fotosDazu(files, idx) {
@@ -386,6 +386,10 @@ function renderNeu() {
         <div class="seg" data-seg="${ai}">${[["auto", "Automatisch"], ["nicideen", "Nicideen"], ["wonderland", "Wonderland"]].map(([v, t]) => `<button data-v="${v}" class="${a.shopWunsch === v ? "on" : ""}">${t}</button>`).join("")}</div>
         <label class="f">Preiswunsch (optional)</label>
         <input type="text" data-f="preisWunsch" placeholder="leer = KI schlägt vor" value="${esc(a.preisWunsch)}">
+        <div class="grid2" style="gap:10px">
+          <div><label class="f">Lagerplatz #</label><input type="text" data-f="lagerplatz" placeholder="z. B. 17" value="${esc(a.lagerplatz)}"></div>
+          <div><label class="f">Stückzahl</label><input type="number" min="1" max="999" data-f="menge" value="${a.menge || 1}"></div>
+        </div>
       </div>
     </div>`).join("");
   $("#neuAktion").classList.toggle("hidden", !neue.length);
@@ -435,7 +439,7 @@ $("#neuStart").onclick = async () => {
     try {
       const files = [a.files[a.haupt], ...a.files.filter((_, i) => i !== a.haupt)];
       a.status = "lädt Fotos hoch …"; renderNeu();
-      const d = await api("/drafts", { method: "POST", json: { bilder: files.length, name: a.name, hinweis: a.hinweis, shopWunsch: a.shopWunsch, preisWunsch: a.preisWunsch } });
+      const d = await api("/drafts", { method: "POST", json: { bilder: files.length, name: a.name, hinweis: a.hinweis, shopWunsch: a.shopWunsch, preisWunsch: a.preisWunsch, lagerplatz: a.lagerplatz, menge: a.menge } });
       let fertig = 0, pos = 0;
       const w = async () => {
         while (pos < files.length) {
@@ -514,6 +518,8 @@ function pruefKarte(d) {
           <div class="tz"><input type="text" data-q="titel" value="${esc(d.titel)}" maxlength="80"><span class="small mut" data-cnt>${[...(d.titel || "")].length}/80</span></div>
           <div class="zeile">
             <input type="text" class="preis" data-q="preis" value="${String(d.preis ?? "").replace(".", ",")}"> <span>€</span>
+            <input type="text" class="preis" style="width:70px" data-q="lagerplatz" placeholder="Lager #" title="Lagerplatz, z. B. 17 – kommt klein in die Beschreibung und als Bestandseinheit" value="${esc(d.lagerplatz || "")}">
+            <input type="number" class="preis" style="width:70px" min="1" max="999" data-q="menge" title="Stückzahl" value="${d.menge || 1}"><span class="small mut">Stk.</span>
             <select class="shopsel" data-q="shop">${["nicideen", "wonderland"].map(s => `<option value="${s}" ${d.shop === s ? "selected" : ""}>${SHOPNAME[s]}</option>`).join("")}</select>
             <span class="kat">${esc(katKurz)}${skat ? " · Shop: " + esc(skat.pfad.split(" > ").pop()) : ""}</span>
           </div>
@@ -629,6 +635,8 @@ function oeffne(id) {
       <div class="grid2">
         <div><label class="f">Zustand</label><select data-k="zustandId">${(kat.zustaende || []).map(z => `<option value="${esc(z.id)}" ${z.id === d.zustandId ? "selected" : ""}>${esc(z.name)}</option>`).join("")}</select></div>
         <div><label class="f">EAN (optional)</label><input type="text" data-k="ean" value="${esc(d.ean)}"></div>
+        <div><label class="f">Lagerplatz #</label><input type="text" data-k="lagerplatz" placeholder="z. B. 17" value="${esc(d.lagerplatz || "")}"></div>
+        <div><label class="f">Stückzahl</label><input type="number" min="1" max="999" data-k="menge" value="${d.menge || 1}"></div>
       </div>
       <label class="f">Zustandsbeschreibung</label>
       <textarea data-k="zustandText" rows="2">${esc(d.zustandText)}</textarea>

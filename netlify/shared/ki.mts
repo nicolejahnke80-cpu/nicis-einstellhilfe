@@ -170,6 +170,7 @@ ${shopBlock("wonderland", s, dW)}`;
   if (draft.hinweis) nutzer.push(`Hinweis von Nicole: ${draft.hinweis}`);
   if (draft.shopWunsch && draft.shopWunsch !== "auto") nutzer.push(`Shop ist vorgegeben: ${draft.shopWunsch}`);
   if (draft.preisWunsch) nutzer.push(`Preiswunsch von Nicole: ${draft.preisWunsch} €`);
+  if ((draft.menge || 1) > 1) nutzer.push(`Nicole hat ${draft.menge} gleiche Exemplare. Das Angebot gilt pro Stück (Mehrfachangebot) – Titel und Beschreibung für EIN Exemplar schreiben, kein „Konvolut“.`);
   nutzer.push("Erstelle das Angebot und gib es AUSSCHLIESSLICH über das Werkzeug angebot_entwurf zurück (kein weiterer Text).");
 
   const m1 = await client.messages.create({

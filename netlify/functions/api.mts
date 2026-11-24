@@ -7,11 +7,16 @@ import { einstellen } from "../shared/einstellen.mts";
 import { fehlendeAngaben } from "../shared/ki.mts";
 
 const isShop = (s: any): s is Shop => SHOPS.includes(s);
+/** „17“, „#17“, „# 17“ → „#17“ */
+const lagerTag = (v: any) => {
+  const t = String(v ?? "").trim().replace(/^#+\s*/, "").slice(0, 20);
+  return t ? `#${t}` : "";
+};
 const rid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
 const EDITIERBAR = [
   "shop", "titel", "preis", "kategorieId", "shopKategorieId", "zustandId", "zustandText", "merkmale", "ean",
-  "beschreibung", "hinweis", "shopWunsch", "preisWunsch", "kategorien", "status", "abgehakt",
+  "beschreibung", "hinweis", "shopWunsch", "preisWunsch", "kategorien", "status", "abgehakt", "lagerplatz", "menge",
 ];
 
 function seite(titel: string, text: string) {
@@ -146,6 +151,8 @@ export default async (req: Request, context: Context) => {
         hinweis: String(b.hinweis || "").slice(0, 2000),
         shopWunsch: b.shopWunsch || "auto",
         preisWunsch: b.preisWunsch ? Number(String(b.preisWunsch).replace(",", ".")) : null,
+        lagerplatz: lagerTag(b.lagerplatz),
+        menge: Math.min(Math.max(parseInt(b.menge) || 1, 1), 999),
       };
       await saveDraft(d);
       return json(d);
@@ -160,6 +167,8 @@ export default async (req: Request, context: Context) => {
         const b = await req.json();
         for (const k of EDITIERBAR) if (k in b) d[k] = b[k];
         if ("preis" in b) d.preis = Number(String(b.preis).replace(",", ".")) || 0;
+        if ("lagerplatz" in b) d.lagerplatz = lagerTag(b.lagerplatz);
+        if ("menge" in b) d.menge = Math.min(Math.max(parseInt(b.menge) || 1, 1), 999);
         await saveDraft(d);
         return json(d);
       }

@@ -23,6 +23,12 @@ async function bilderHochladen(d: any) {
   d.ebayBilder = d.ebayBilder.slice(0, Math.min(d.bilder, 24));
 }
 
+/** Lagerplatz (z. B. #17) unten klein in die Beschreibung – zum Wiederfinden im Lager */
+function mitLagerplatz(html: string, tag: string) {
+  if (!tag || html.includes(tag)) return html;
+  return `${html}\n<p style="font-size:11px;color:#aaa;text-align:right;margin:8px 0 0">${esc(tag)}</p>`;
+}
+
 function itemXml(d: any, s: any) {
   const p = s.shops[d.shop].profile;
   const merkmale = Object.entries(d.merkmale || {})
@@ -35,14 +41,14 @@ function itemXml(d: any, s: any) {
   const zustandText = d.zustandId !== "1000" && d.zustandText ? `<ConditionDescription>${esc(String(d.zustandText).slice(0, 1000))}</ConditionDescription>` : "";
   return `<Item>
 <Title>${esc(String(d.titel).slice(0, 80))}</Title>
-<Description>${cdata(d.beschreibung || "")}</Description>
+<Description>${cdata(mitLagerplatz(d.beschreibung || "", d.lagerplatz))}</Description>
 <PrimaryCategory><CategoryID>${esc(d.kategorieId)}</CategoryID></PrimaryCategory>
 <StartPrice currencyID="EUR">${Number(d.preis).toFixed(2)}</StartPrice>
 <ConditionID>${esc(d.zustandId)}</ConditionID>${zustandText}
 <Country>DE</Country><Currency>EUR</Currency>
 <PostalCode>${esc(s.standort.plz)}</PostalCode>${s.standort.ort ? `<Location>${esc(s.standort.ort)}</Location>` : ""}
-<ListingDuration>GTC</ListingDuration><ListingType>FixedPriceItem</ListingType><Quantity>1</Quantity>
-<SKU>${esc(d.id)}</SKU>
+<ListingDuration>GTC</ListingDuration><ListingType>FixedPriceItem</ListingType><Quantity>${Math.max(1, parseInt(d.menge) || 1)}</Quantity>
+<SKU>${esc(d.lagerplatz || d.id)}</SKU>
 <PictureDetails>${(d.ebayBilder || []).map((u: string) => `<PictureURL>${esc(u)}</PictureURL>`).join("")}</PictureDetails>
 <SellerProfiles>
 <SellerShippingProfile><ShippingProfileID>${esc(p.shipping)}</ShippingProfileID></SellerShippingProfile>

@@ -4,9 +4,9 @@ import {
 } from "../shared/store.mts";
 import {
   angebotAendern, angebotAnBeobachter, angebotBeenden, bildHochladen, consentUrl, exchangeCode, hasCreds, hatTrafficRecht,
-  kategorieVorschlaege, merkmaleFuer, syncShop, zustaendeFuer,
+  kategorieVorschlaege, merkmaleFuer, sicherheitsLabels, syncShop, zustaendeFuer,
 } from "../shared/ebay.mts";
-import { einstellen, titelMitLager } from "../shared/einstellen.mts";
+import { einstellen, mitPflichthinweisen, sicherheitFuer, titelMitLager } from "../shared/einstellen.mts";
 import { itemKey, lagerAus, listeKey, standKey } from "../shared/alt.mts";
 import { fehlendeAngaben } from "../shared/ki.mts";
 
@@ -20,7 +20,7 @@ const rid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 
 const EDITIERBAR = [
   "shop", "titel", "preis", "kategorieId", "shopKategorieId", "zustandId", "zustandText", "merkmale", "ean",
-  "beschreibung", "hinweis", "shopWunsch", "preisWunsch", "kategorien", "status", "abgehakt", "lagerplatz", "menge",
+  "beschreibung", "hinweis", "shopWunsch", "preisWunsch", "kategorien", "status", "abgehakt", "lagerplatz", "menge", "batterie", "u3",
 ];
 
 function seite(titel: string, text: string) {
@@ -236,6 +236,10 @@ export default async (req: Request, context: Context) => {
       if (!r.ok) return new Response("", { status: 404 });
       return new Response(await r.arrayBuffer(), { headers: { "content-type": r.headers.get("content-type") || "image/jpeg", "cache-control": "private, max-age=3600" } });
     }
+    // eBay-Sicherheitshinweise (Produktsicherheit) zur Auswahl in den Einstellungen
+    if (m === "GET" && path === "/sicherheitslabels") {
+      try { return json(await sicherheitsLabels()); } catch (e: any) { return json({ fehler: e.message }, 502); }
+    }
     // Entsorgen-Liste (beendete Angebote, beide Shops)
     if (path === "/entsorgen") {
       if (m === "GET") return json((await getJSON("entsorgen")) || []);
@@ -275,6 +279,9 @@ export default async (req: Request, context: Context) => {
           if ("preis" in b) v.neu.preis = Number(String(b.preis).replace(",", ".")) || 0;
           if (Array.isArray(b.bilder)) v.neu.bilder = b.bilder.map(String).filter((x: string) => /^https:\/\//.test(x)).slice(0, 24);
           if ("abgehakt" in b) v.abgehakt = !!b.abgehakt;
+          // Kreuzchen: einmal von Hand gesetzt, überschreibt die KI sie nicht mehr
+          if ("batterie" in b) { v.neu.batterie = !!b.batterie; v.neu.batterieGesetzt = true; }
+          if ("u3" in b) { v.neu.u3 = !!b.u3; v.neu.u3Gesetzt = true; }
           await setJSON(key, v);
           return json(v);
         }
@@ -289,22 +296,27 @@ export default async (req: Request, context: Context) => {
         if (m === "POST" && seg[4] === "uebernehmen") {
           if (!v.neu || !v.original) return json({ fehler: "Erst den Vorschlag laden." }, 400);
           const o = v.original, n = v.neu;
+          const s = await getSettings();
           const titel = titelMitLager(n.titel, v.lager || "");
+          const flags = { batterie: !!n.batterie, u3: !!n.u3 };
+          const beschrNeu = mitPflichthinweisen(n.beschreibung, flags, s);
           const bilderNeu = (n.bilder || []).join("|") !== (o.bilder || []).join("|");
           try {
             const warnungen = await angebotAendern(shop, itemId, {
               titel: titel !== o.titel ? titel : undefined,
-              beschreibung: n.beschreibung !== o.beschreibung ? n.beschreibung : undefined,
+              beschreibung: beschrNeu !== o.beschreibung ? beschrNeu : undefined,
               preis: Number(n.preis) !== Number(o.preis) ? Number(n.preis) : undefined,
               zustandText: (n.zustandText || "") !== (o.zustandText || "") ? n.zustandText : undefined,
               zustandId: o.zustandId,
               bilder: bilderNeu ? n.bilder : undefined,
+              sicherheitXml: sicherheitFuer(flags, s) || undefined,
             });
             const stand: any = (await getJSON(standKey(shop))) || {};
             stand[itemId] = { status: "bearbeitet", zeit: Date.now(), preisAlt: o.preis, preisNeu: Number(n.preis) };
             await setJSON(standKey(shop), stand);
             // Original auf den neuen Stand bringen, damit ein zweites Übernehmen nur echte Änderungen schickt
-            v.original = { ...o, titel, beschreibung: n.beschreibung, preis: Number(n.preis), zustandText: n.zustandText, bilder: n.bilder };
+            v.original = { ...o, titel, beschreibung: beschrNeu, preis: Number(n.preis), zustandText: n.zustandText, bilder: n.bilder };
+            n.beschreibung = beschrNeu;
             v.uebernommen = Date.now();
             v.abgehakt = false;
             v.fehler = "";

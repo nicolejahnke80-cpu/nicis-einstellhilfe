@@ -109,10 +109,12 @@ const ANGEBOT_TOOL: any = {
       },
       beschreibung_html: { type: "string", description: "Komplette Artikelbeschreibung als HTML nach der Vorlage des gewählten Shops." },
       preis_idee: { type: "number", description: "Grobe eigene Preis-Idee in Euro (wird später mit echten eBay-Angeboten abgeglichen)." },
+      batterie: { type: "boolean", description: "true, wenn der Artikel Batterien oder Akkus enthält oder damit betrieben wird (auch Knopfzellen, Spielmodule mit Speicherbatterie, Controller/Telefone mit Akku, elektronisches Spielzeug). Sonst false." },
+      unter3: { type: "boolean", description: "true, wenn Spielzeug oder Sammelartikel mit Kleinteilen, der nicht für Kinder unter 3 Jahren geeignet ist (z. B. LEGO, Figuren, Spielmodule, Karten, Brettspiele mit Kleinteilen). Sonst false." },
       sicherheit: { type: "string", enum: ["hoch", "mittel", "niedrig"], description: "Wie sicher ist die Erkennung insgesamt?" },
       hinweise: { type: "string", description: "Höchstens EINE kurze Rückfrage an Nicole (max. 15 Wörter), nur wenn sie für Käufer wirklich wichtig ist und auf den Fotos nicht erkennbar ist (z. B. „Funktioniert es?“). Sonst leer." },
     },
-    required: ["artikel", "shop", "suchbegriff", "titel", "zustand_stufe", "zustand_text", "merkmale", "beschreibung_html", "sicherheit"],
+    required: ["artikel", "shop", "suchbegriff", "titel", "zustand_stufe", "zustand_text", "merkmale", "beschreibung_html", "sicherheit", "batterie", "unter3"],
   },
 };
 
@@ -168,6 +170,7 @@ Grundregeln:
 - Alles auf Deutsch.
 - Wähle den passenden Shop anhand von „Was gehört hierher“ und ihrer Shop-Kategorien.
 ${TITELREGELN}
+- Batterie-Entsorgungshinweis und „Nicht für Kinder unter 3 Jahren“ NICHT selbst in die Beschreibung schreiben (auch nicht aus alten Angeboten übernehmen) – die werden automatisch angehängt, wenn das Kreuzchen gesetzt ist.
 - Beschreibung: Übernimm die Vorlage des gewählten Shops 1:1 in Aufbau, HTML, CSS, Farben, Überschriften und festen Textbausteinen (z. B. Versand-, Rechts- oder Grußtexte). Ersetze nur die artikelbezogenen Inhalte. Kein JavaScript, keine externen Bilder einfügen.
 - Ehrlich bleiben: Nichts behaupten, was nicht auf den Fotos zu sehen ist oder im Hinweis von Nicole steht (z. B. „getestet“, „funktioniert“, „vollständig“). Sichtbare Mängel nennen.
 - Sie zahlt den Versand selbst (für Käufer versandkostenfrei) – das darf in Titel/Beschreibung nur stehen, wenn es in ihrer Vorlage so steht.
@@ -287,6 +290,9 @@ ${vergText || "(keine gefunden)"}`,
     beschreibung: a.beschreibung_html,
     zustandText: a.zustand_text,
     ean: a.ean || "",
+    // Nicideen: beide Hinweise gehören laut Nicole immer dazu
+    batterie: shop === "nicideen" ? true : !!a.batterie,
+    u3: shop === "nicideen" ? true : !!a.unter3,
     shopKategorieId: shopKatOk ? String(a.shop_kategorie_id) : "",
     kategorieId: kat?.id || "",
     kategorien: top.map((k) => ({ id: k.id, pfad: k.pfad, aspekte: k.aspekte, zustaende: k.zustaende })),
@@ -391,8 +397,10 @@ const ALT_TOOL: any = {
       preis_begruendung: { type: "string", description: "1–2 Sätze, warum dieser Preis." },
       aenderungen: { type: "string", description: "Stichpunktartig in einem Satz: was wurde geändert (z. B. „Modellnummer in den Titel, ‚LESEN‘ entfernt, Preis 5 € runter“)." },
       rueckfrage: { type: "string", description: "Höchstens EINE kurze Rückfrage an Nicole (max. 15 Wörter), nur wenn für Käufer wirklich wichtig. Sonst leer." },
+      batterie: { type: "boolean", description: "true, wenn der Artikel Batterien oder Akkus enthält oder damit betrieben wird (auch Knopfzellen, Spielmodule mit Speicherbatterie, Akku-Geräte). Sonst false." },
+      unter3: { type: "boolean", description: "true, wenn Spielzeug/Sammelartikel mit Kleinteilen, nicht für Kinder unter 3 Jahren geeignet. Sonst false." },
     },
-    required: ["titel", "zustand_text", "beschreibung_html", "preis", "preis_begruendung", "aenderungen"],
+    required: ["titel", "zustand_text", "beschreibung_html", "preis", "preis_begruendung", "aenderungen", "batterie", "unter3"],
   },
 };
 
@@ -439,6 +447,7 @@ Stilregeln: ${cfg.stil}
 Regeln:
 - Alles auf Deutsch.
 ${TITELREGELN}
+- Batterie-Entsorgungshinweis und „Nicht für Kinder unter 3 Jahren“ NICHT selbst in die Beschreibung schreiben (auch nicht aus alten Angeboten übernehmen) – die werden automatisch angehängt, wenn das Kreuzchen gesetzt ist.
 - Beschreibung: Übernimm die Vorlage des Shops 1:1 in Aufbau, HTML, CSS, Farben, Überschriften und festen Textbausteinen (z. B. Versand-, Rechts- oder Grußtexte, Hinweise). Fülle sie mit den Inhalten aus dem alten Angebot. Alle wichtigen Infos aus der alten Beschreibung behalten (Lieferumfang, Mängel, Funktion, Maße). Kein JavaScript, keine externen Bilder.
 - Ehrlich bleiben: Nichts behaupten, was nicht im alten Angebot steht, auf den Fotos zu sehen ist oder von Nicole kommt.
 - Preis: Nicole zahlt den Versand selbst. Vergleiche mit den GESAMTpreisen (Preis + Versand) wirklich vergleichbarer Angebote. Das Angebot ist schon ${tageOnline ?? "?"} Tage online${stats ? ` und hatte in den letzten 30 Tagen ${stats.impressionen} Impressionen und ${stats.aufrufe} Aufrufe` : ""}, ${o.beobachter} Beobachter. Wenn der Preis über vergleichbaren Angeboten liegt, moderat senken (auf ,99 / ,95 / ,00 enden). Wenn er schon passt, gleich lassen. Nicht verschenken.
@@ -491,5 +500,7 @@ Antworte ausschließlich über das Werkzeug angebot_ueberarbeitet.`;
     aenderungen: a.aenderungen || "",
     rueckfrage: a.rueckfrage || "",
     vergleich: vergleich.slice(0, 12),
+    batterie: shop === "nicideen" ? true : !!a.batterie,
+    u3: shop === "nicideen" ? true : !!a.unter3,
   };
 }

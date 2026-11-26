@@ -498,7 +498,7 @@ export async function angebotDetails(shop: Shop, itemId: string) {
 export async function angebotAendern(
   shop: Shop,
   itemId: string,
-  f: { titel?: string; beschreibung?: string; preis?: number; zustandText?: string; zustandId?: string; bilder?: string[] }
+  f: { titel?: string; beschreibung?: string; preis?: number; zustandText?: string; zustandId?: string; bilder?: string[]; sicherheitXml?: string }
 ) {
   const teile: string[] = [`<ItemID>${esc(itemId)}</ItemID>`];
   if (f.titel) teile.push(`<Title>${esc(f.titel)}</Title>`);
@@ -506,6 +506,7 @@ export async function angebotAendern(
   if (f.preis && f.preis > 0) teile.push(`<StartPrice currencyID="EUR">${Number(f.preis).toFixed(2)}</StartPrice>`);
   if (f.zustandText !== undefined && f.zustandId !== "1000") teile.push(`<ConditionDescription>${esc(String(f.zustandText).slice(0, 1000))}</ConditionDescription>`);
   if (f.bilder?.length) teile.push(`<PictureDetails>${f.bilder.slice(0, 24).map((u) => `<PictureURL>${esc(u)}</PictureURL>`).join("")}</PictureDetails>`);
+  if (f.sicherheitXml) teile.push(f.sicherheitXml);
   const { warnungen } = await trading(shop, "ReviseFixedPriceItem", `<Item>${teile.join("")}</Item>`);
   return warnungen.map((w: any) => w.text);
 }
@@ -529,4 +530,27 @@ export async function angebotAnBeobachter(shop: Shop, itemId: string, prozent: n
     },
   });
   return data;
+}
+
+
+// ---------- Produktsicherheit (GPSR): Piktogramme und Sicherheitshinweise von eBay ----------
+export async function sicherheitsLabels() {
+  const cache: any = await getJSON("sicherheitslabels");
+  if (cache?.geladen && Date.now() - cache.geladen < 7 * 864e5 && cache.statements?.length) return cache;
+  const token = await appToken();
+  const { data } = await rest("/sell/metadata/v1/marketplace/EBAY_DE/get_product_safety_labels", { token, headers: { "Accept-Language": "de-DE" } });
+  const out = {
+    geladen: Date.now(),
+    statements: (data.statements || []).map((x: any) => ({ id: String(x.statementId), text: String(x.statementDescription || "") })),
+    piktogramme: (data.pictograms || []).map((x: any) => ({ id: String(x.pictogramId), text: String(x.pictogramDescription || ""), bild: String(x.pictogramUrl || "") })),
+  };
+  await setJSON("sicherheitslabels", out);
+  return out;
+}
+
+/** XML für Item.Regulatory – nur wenn etwas angekreuzt ist */
+export function produktsicherheitXml(statements: string[], piktogramme: string[]) {
+  const st = statements.filter(Boolean), pk = piktogramme.filter(Boolean);
+  if (!st.length && !pk.length) return "";
+  return `<Regulatory><ProductSafety>${pk.length ? `<Pictograms>${pk.map((x) => `<Pictogram>${esc(x)}</Pictogram>`).join("")}</Pictograms>` : ""}${st.length ? `<Statements>${st.map((x) => `<Statement>${esc(x)}</Statement>`).join("")}</Statements>` : ""}</ProductSafety></Regulatory>`;
 }

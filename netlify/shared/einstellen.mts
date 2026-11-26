@@ -1,5 +1,5 @@
 import { db, getSettings, imgKey, saveDraft, type Shop } from "./store.mts";
-import { anzeigeInKampagne, bildHochladen, cdata, esc, trading } from "./ebay.mts";
+import { anzeigeInKampagne, bildHochladen, cdata, esc, produktsicherheitXml, trading } from "./ebay.mts";
 import { fehlendeAngaben } from "./ki.mts";
 
 async function bilderHochladen(d: any) {
@@ -45,6 +45,36 @@ function mitLagerplatz(html: string, tag: string) {
   return `${t}\n${zeile}`;
 }
 
+/** Pflicht-Hinweise (Batterie, unter 3 Jahren) unten in die Beschreibung – innerhalb des Designs, nicht doppelt */
+export function mitPflichthinweisen(html: string, f: { batterie?: boolean; u3?: boolean }, s: any) {
+  let t = String(html || "").trimEnd();
+  const bloecke: string[] = [];
+  const absatz = (txt: string) => esc(txt).replace(/\n\s*\n/g, "</p><p style=\"margin:6px 0 0\">").replace(/\n/g, "<br>");
+  if (f.u3 && !/unter\s*3\s*Jahr|unter\s*drei\s*Jahr|0\s*-\s*3\s*Jahr|36\s*Monat/i.test(t) && s.hinweise?.u3Text)
+    bloecke.push(`<p style="margin:16px 0 0;font-weight:600">⚠️ ${esc(s.hinweise.u3Text)}</p>`);
+  if (f.batterie && !/Batterieentsorgung/i.test(t) && s.hinweise?.batterieText) {
+    const [kopf, ...rest] = String(s.hinweise.batterieText).split(/\n\s*\n/);
+    bloecke.push(`<div style="margin:16px 0 0;font-size:12px;line-height:1.5;color:#555"><p style="margin:0;font-weight:600">${esc(kopf)}</p><p style="margin:6px 0 0">${absatz(rest.join("\n\n"))}</p></div>`);
+  }
+  if (!bloecke.length) return t;
+  const zusatz = bloecke.join("");
+  const i = t.toLowerCase().lastIndexOf("</div>");
+  if (i >= 0 && t.slice(i + 6).trim() === "") return t.slice(0, i) + zusatz + t.slice(i);
+  return `${t}\n${zusatz}`;
+}
+
+/** Kreuzchen eines Entwurfs – bei Nicideen standardmäßig beide an */
+export const hinweisFlags = (d: any) => ({ batterie: d.batterie ?? d.shop === "nicideen", u3: d.u3 ?? d.shop === "nicideen" });
+
+/** eBay-Produktsicherheit passend zu den Kreuzchen */
+export function sicherheitFuer(f: { batterie?: boolean; u3?: boolean }, s: any) {
+  const h = s.hinweise || {};
+  return produktsicherheitXml(
+    [f.u3 ? h.u3Statement : "", f.batterie ? h.batterieStatement : ""],
+    [f.u3 ? h.u3Piktogramm : ""]
+  );
+}
+
 function itemXml(d: any, s: any) {
   const p = s.shops[d.shop].profile;
   const merkmale = Object.entries(d.merkmale || {})
@@ -57,7 +87,7 @@ function itemXml(d: any, s: any) {
   const zustandText = d.zustandId !== "1000" && d.zustandText ? `<ConditionDescription>${esc(String(d.zustandText).slice(0, 1000))}</ConditionDescription>` : "";
   return `<Item>
 <Title>${esc(titelMitLager(d.titel, d.lagerplatz))}</Title>
-<Description>${cdata(d.beschreibung || "")}</Description>
+<Description>${cdata(mitPflichthinweisen(d.beschreibung || "", hinweisFlags(d), s))}</Description>
 <PrimaryCategory><CategoryID>${esc(d.kategorieId)}</CategoryID></PrimaryCategory>
 <StartPrice currencyID="EUR">${Number(d.preis).toFixed(2)}</StartPrice>
 <ConditionID>${esc(d.zustandId)}</ConditionID>${zustandText}
@@ -75,6 +105,7 @@ ${d.shopKategorieId ? `<Storefront><StoreCategoryID>${esc(d.shopKategorieId)}</S
 ${merkmale ? `<ItemSpecifics>${merkmale}</ItemSpecifics>` : ""}
 ${d.ean ? `<ProductListingDetails><EAN>${esc(d.ean)}</EAN></ProductListingDetails>` : ""}
 ${s.preisvorschlagErlauben ? `<BestOfferDetails><BestOfferEnabled>true</BestOfferEnabled></BestOfferDetails>` : ""}
+${sicherheitFuer(hinweisFlags(d), s)}
 </Item>`;
 }
 

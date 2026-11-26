@@ -64,6 +64,11 @@ export async function vorschlagErstellen(shop: Shop, itemId: string, wunsch = ""
         preis: v.preis,
         zustandText: v.zustandText,
         beschreibung: v.beschreibung,
+        // Kreuzchen: von Hand gesetzte bleiben, sonst Vorschlag der KI
+        batterie: aktuell.neu?.batterieGesetzt ? aktuell.neu.batterie : v.batterie,
+        u3: aktuell.neu?.u3Gesetzt ? aktuell.neu.u3 : v.u3,
+        batterieGesetzt: !!aktuell.neu?.batterieGesetzt,
+        u3Gesetzt: !!aktuell.neu?.u3Gesetzt,
         // eigene Foto-Änderungen (Zuschnitt, Reihenfolge) nicht überschreiben
         bilder: aktuell.neu?.bilder?.length ? aktuell.neu.bilder : original.bilder,
       },

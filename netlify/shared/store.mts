@@ -60,8 +60,20 @@ export function defaultSettings() {
     werbungProzent: 5,
     preisvorschlagErlauben: false,
     autoEinstellen: false,
+    hinweise: {
+      batterieText: BATTERIE_TEXT,
+      u3Text: "Achtung: Nicht für Kinder unter 3 Jahren geeignet. Enthält verschluckbare Kleinteile – Erstickungsgefahr.",
+      // IDs der eBay-Sicherheitshinweise (Produktsicherheit), in den Einstellungen gewählt
+      u3Statement: "",
+      u3Piktogramm: "",
+      batterieStatement: "",
+    },
   };
 }
+
+export const BATTERIE_TEXT = `Hinweise zur Batterieentsorgung
+
+Im Zusammenhang mit dem Vertrieb von Batterien oder mit der Lieferung von Geräten, die Batterien enthalten, sind wir verpflichtet, Sie auf folgendes hinzuweisen: Sie sind zur Rückgabe gebrauchter Batterien als Endnutzer gesetzlich verpflichtet. Sie können Altbatterien, die wir als Neubatterien im Sortiment führen oder geführt haben, unentgeltlich an unserem Versandlager (Versandadresse) zurückgeben. Die auf den Batterien abgebildeten Symbole haben folgende Bedeutung: Das Symbol der durchgekreuzten Mülltonne bedeutet, dass die Batterie nicht in den Hausmüll gegeben werden darf. Pb = Batterie enthält mehr als 0,004 Masseprozent Blei Cd = Batterie enthält mehr als 0,002 Masseprozent Cadmium Hg = Batterie enthält mehr als 0,0005 Masseprozent Quecksilber.`;
 
 export async function getSettings() {
   const s = await getJSON("settings");
@@ -72,6 +84,7 @@ export async function getSettings() {
     ...d,
     ...s,
     standort: { ...d.standort, ...(s.standort || {}) },
+    hinweise: { ...d.hinweise, ...(s.hinweise || {}) },
     shops: {
       nicideen: { ...d.shops.nicideen, ...(s.shops?.nicideen || {}), profile: { ...d.shops.nicideen.profile, ...(s.shops?.nicideen?.profile || {}) } },
       wonderland: { ...d.shops.wonderland, ...(s.shops?.wonderland || {}), profile: { ...d.shops.wonderland.profile, ...(s.shops?.wonderland?.profile || {}) } },

@@ -298,6 +298,16 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acc)
           <label class="row small" style="margin-top:6px"><input type="checkbox" id="sAuto"> Automatisch einstellen, wenn die KI sich sicher ist und nichts fehlt</label>
         </div>
       </div>
+      <div class="card" style="margin-top:14px">
+        <h3 style="margin:0">Pflicht-Hinweise</h3>
+        <div class="small mut" style="margin-top:4px">Wenn im Entwurf das Kreuz gesetzt ist, kommt der Text unten in die Beschreibung, und bei eBay wird unter „Produktsicherheit“ der passende Sicherheitshinweis angekreuzt.</div>
+        <label class="f">🔋 Text zur Batterieentsorgung</label>
+        <textarea id="hBatText" rows="7"></textarea>
+        <label class="f">🚫 Text „Nicht für Kinder unter 3 Jahren“</label>
+        <input type="text" id="hU3Text">
+        <div class="row" style="margin-top:14px"><b class="small">Kreuze bei eBay (Produktsicherheit)</b><span class="sp"></span><button class="btn s" id="hLaden">Von eBay laden</button></div>
+        <div id="hEbay" class="small mut" style="margin-top:6px">Klick auf „Von eBay laden“, dann wählst du aus, welcher eBay-Hinweis angekreuzt werden soll.</div>
+      </div>
       <div style="margin-top:16px"><button class="btn p" id="speichernEinst">Einstellungen speichern</button></div>
     </div>
   </section>
@@ -827,6 +837,7 @@ function oeffne(id) {
         <div><label class="f">Lagerplatz #</label><input type="text" data-k="lagerplatz" placeholder="z. B. 17" value="${esc(d.lagerplatz || "")}"></div>
         <div><label class="f">Stückzahl</label><input type="number" min="1" max="999" data-k="menge" value="${d.menge || 1}"></div>
       </div>
+      ${hinweisKreuze(d.batterie ?? d.shop === "nicideen", d.u3 ?? d.shop === "nicideen", "Werden beim Einstellen unten an die Beschreibung angehängt und bei eBay unter „Produktsicherheit“ angekreuzt.")}
       <label class="f">Zustandsbeschreibung</label>
       <textarea data-k="zustandText" rows="2">${esc(d.zustandText)}</textarea>
       <label class="f">Artikelmerkmale <span style="text-transform:none;font-weight:400">(<span class="pf" style="color:var(--err)">*</span> = Pflicht · mehrere Werte mit Komma)</span></label>
@@ -852,7 +863,7 @@ function oeffne(id) {
     clearTimeout(t);
     const run = async () => {
       const body = {};
-      $$("[data-k]", w).forEach(el => { if (el.dataset.k !== "kategorieId" || el.value !== "__suche") body[el.dataset.k] = el.value; });
+      $$("[data-k]", w).forEach(el => { if (el.dataset.k !== "kategorieId" || el.value !== "__suche") body[el.dataset.k] = el.type === "checkbox" ? el.checked : el.value; });
       body.merkmale = {};
       $$("[data-mk]", w).forEach(el => { const v = el.value.split(",").map(s => s.trim()).filter(Boolean); if (v.length) body.merkmale[el.dataset.mk] = v; });
       const r = await api(`/drafts/${id}`, { method: "PUT", json: body });
@@ -955,6 +966,16 @@ $("#aufraeumen").onclick = async () => {
   for (const d of l) await api(`/drafts/${d.id}`, { method: "DELETE" });
   ladeDrafts();
 };
+
+// ---------- Pflicht-Hinweise (Batterie, unter 3 Jahren) ----------
+function hinweisKreuze(batterie, u3, info) {
+  return `<label class="f">Pflicht-Hinweise</label>
+    <div class="row" style="gap:18px">
+      <label class="row small" style="gap:6px;cursor:pointer"><input type="checkbox" data-k="batterie" ${batterie ? "checked" : ""}> 🔋 Enthält Batterien / Akku</label>
+      <label class="row small" style="gap:6px;cursor:pointer"><input type="checkbox" data-k="u3" ${u3 ? "checked" : ""}> 🚫 Nicht für Kinder unter 3 Jahren</label>
+    </div>
+    <div class="small mut" style="margin-top:4px">${esc(info)}</div>`;
+}
 
 // ---------- Alte Angebote ----------
 const GESTARTET = new Set();
@@ -1208,6 +1229,7 @@ function altEditor(w, id, v) {
       ${v.ki?.preisBegruendung ? `<div class="small mut" style="margin-top:6px">💶 ${esc(v.ki.preisBegruendung)}</div>` : ""}
       ${v.ki?.vergleich?.length ? `<details><summary>Vergleichsangebote bei eBay (${v.ki.vergleich.length})</summary><div class="verg">${v.ki.vergleich.map(x => `<div><b>${euro(x.gesamt)}</b> <span class="mut">(${euro(x.preis)} + ${euro(x.versand)})</span> · ${esc(x.zustand || "")} · ${esc(x.titel)}</div>`).join("")}</div></details>` : ""}
       ${o.zustandId !== "1000" ? `<label class="f">Zustandsbeschreibung</label><textarea data-k="zustandText" rows="2">${esc(n.zustandText)}</textarea>` : ""}
+      ${hinweisKreuze(n.batterie ?? ALT.shop === "nicideen", n.u3 ?? ALT.shop === "nicideen", "Werden beim Übernehmen unten an die Beschreibung angehängt und bei eBay unter „Produktsicherheit“ angekreuzt.")}
       <label class="f">Neue Beschreibung <a href="#" data-f="html" style="float:right;text-transform:none">HTML bearbeiten</a> <a href="#" data-f="altb" style="float:right;text-transform:none;margin-right:14px">Alte ansehen</a></label>
       <iframe class="vs" sandbox data-vs="neu"></iframe>
       <iframe class="vs hidden" sandbox data-vs="alt"></iframe>
@@ -1236,7 +1258,7 @@ function altEditor(w, id, v) {
     clearTimeout(tm);
     const run = async () => {
       const b = { bilder: n.bilder };
-      $$("[data-k]", w).forEach(el => b[el.dataset.k] = el.value);
+      $$("[data-k]", w).forEach(el => b[el.dataset.k] = el.type === "checkbox" ? el.checked : el.value);
       const r = await api(`/alt/${ALT.shop}/item/${id}`, { method: "PUT", json: b });
       Object.assign(n, r.neu); $("[data-msg]", w).textContent = "Gespeichert ✓";
     };
@@ -1307,6 +1329,7 @@ function altEditor(w, id, v) {
       if (Number(n.preis) !== Number(o.preis)) aend.push(`Preis ${euro(o.preis)} → ${euro(n.preis)}`);
       if ((n.zustandText || "") !== (o.zustandText || "") && o.zustandId !== "1000") aend.push("Zustand");
       if (n.bilder.join("|") !== o.bilder.join("|")) aend.push("Fotos");
+      if (n.batterie || n.u3) aend.push([n.batterie && "Batterie-Hinweis", n.u3 && "unter 3 Jahren"].filter(Boolean).join(" + "));
       if (!aend.length) return toast("Es gibt keine Änderungen zum Übernehmen.");
       if (!confirm(`Bei eBay ändern: ${aend.join(", ")}?\n\nDas Angebot läuft einfach weiter – nichts wird beendet.`)) return;
       const btn = e.target; btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Wird geändert …`;
@@ -1457,7 +1480,27 @@ function renderEinst() {
   }).join("");
   $("#sPlz").value = st.standort.plz || ""; $("#sOrt").value = st.standort.ort || "";
   $("#sWerb").value = st.werbungProzent; $("#sBO").checked = !!st.preisvorschlagErlauben; $("#sAuto").checked = !!st.autoEinstellen;
+  $("#hBatText").value = st.hinweise?.batterieText || ""; $("#hU3Text").value = st.hinweise?.u3Text || "";
+  if (st.hinweise?.u3Statement || st.hinweise?.batterieStatement) ladeSicherheit();
 }
+/** eBay-Sicherheitshinweise laden und zur Auswahl anzeigen (mit Vorschlag nach Text) */
+async function ladeSicherheit() {
+  const box = $("#hEbay"); box.innerHTML = `<span class="spin"></span> lade Liste von eBay …`;
+  let L;
+  try { L = await api("/sicherheitslabels"); } catch (e) { box.innerHTML = `<span style="color:var(--err)">${esc(e.message)}</span>`; return; }
+  const h = STATE.settings.hinweise || {};
+  const finde = (liste, re) => (liste.find(x => re.test(x.text)) || {}).id || "";
+  const u3s = h.u3Statement || finde(L.statements, /3\s*Jahr|36\s*Monat|drei Jahr/i);
+  const bats = h.batterieStatement || finde(L.statements, /Batter|Akku|Knopfzell/i);
+  const u3p = h.u3Piktogramm || finde(L.piktogramme, /3\s*Jahr|0\s*[-–]\s*3|36\s*Monat|Kleinkind/i);
+  const opt = (liste, wahl) => `<option value="">– nichts ankreuzen –</option>${liste.map(x => `<option value="${esc(x.id)}" ${x.id === wahl ? "selected" : ""}>${esc(x.text.slice(0, 160))}</option>`).join("")}`;
+  box.innerHTML = `
+    <label class="f">Sicherheitshinweis bei „unter 3 Jahren“</label><select id="hU3s">${opt(L.statements, u3s)}</select>
+    <label class="f">Piktogramm bei „unter 3 Jahren“</label><select id="hU3p">${opt(L.piktogramme, u3p)}</select>
+    <label class="f">Sicherheitshinweis bei „Batterie“</label><select id="hBats">${opt(L.statements, bats)}</select>
+    <div style="margin-top:6px">Vorauswahl nach Text – bitte einmal prüfen und dann „Einstellungen speichern“.</div>`;
+}
+$("#hLaden").onclick = ladeSicherheit;
 $("#shopKarten").addEventListener("click", async e => {
   const c = e.target.dataset.connect, sy = e.target.dataset.sync;
   if (c) { const r = await api("/ebay/connect", { method: "POST", json: { shop: c } }); location.href = r.url; }
@@ -1484,6 +1527,8 @@ $("#speichernEinst").onclick = async () => {
   st.standort = { plz: $("#sPlz").value.trim(), ort: $("#sOrt").value.trim() };
   st.werbungProzent = Number(String($("#sWerb").value).replace(",", ".")) || 5;
   st.preisvorschlagErlauben = $("#sBO").checked; st.autoEinstellen = $("#sAuto").checked;
+  st.hinweise = { ...(st.hinweise || {}), batterieText: $("#hBatText").value.trim(), u3Text: $("#hU3Text").value.trim() };
+  if ($("#hU3s")) Object.assign(st.hinweise, { u3Statement: $("#hU3s").value, u3Piktogramm: $("#hU3p").value, batterieStatement: $("#hBats").value });
   STATE.settings = await api("/settings", { method: "PUT", json: st });
   setupHinweis(); toast("Gespeichert ✓"); ladeDrafts();
 };

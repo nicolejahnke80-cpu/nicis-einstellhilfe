@@ -47,10 +47,14 @@ const STANDARD_VORLAGE: Record<Shop, string> = {
 </div>`,
 };
 
+/** Nur Unterkategorien ohne weitere Unterkategorien – eBay nimmt Artikel nur dort auf */
+export const blattKategorien = (daten: any) => (daten?.storeKategorien || []).filter((k: any) => k.blatt !== false);
+export const shopKatListe = (daten: any) => blattKategorien(daten).map((k: any) => `${k.id} = ${k.pfad}`).join("\n") || "(noch keine Shop-Kategorien geladen)";
+
 function shopBlock(shop: Shop, s: any, daten: any) {
   const cfg = s.shops[shop];
   const vorlage = cfg.vorlageHtml?.trim() || daten?.beispiele?.[0]?.html || STANDARD_VORLAGE[shop];
-  const kats = (daten?.storeKategorien || []).map((k: any) => `${k.id} = ${k.pfad}`).join("\n") || "(noch keine Shop-Kategorien geladen)";
+  const kats = shopKatListe(daten);
   const beispiele = (daten?.beispiele || [])
     .map((b: any) => {
       const sk = daten.storeKategorien?.find((k: any) => k.id === b.shopKategorieId);
@@ -98,7 +102,7 @@ const ANGEBOT_TOOL: any = {
       shop: { type: "string", enum: ["nicideen", "wonderland"] },
       suchbegriff: { type: "string", description: "Kurzer eBay-Suchbegriff (2–6 Wörter) zum Finden der eBay-Kategorie und vergleichbarer Angebote, ohne Emojis und Füllwörter." },
       titel: { type: "string", description: "eBay-Titel, höchstens 80 Zeichen (Emojis zählen mit), im Stil ihrer Titel." },
-      shop_kategorie_id: { type: "string", description: "ID aus der Liste der Shop-Kategorien des gewählten Shops, oder leer wenn keine passt." },
+      shop_kategorie_id: { type: "string", description: "ID aus der Liste der Shop-Kategorien des gewählten Shops. Immer die genaueste passende Unterkategorie wählen (z. B. Nintendo > Game Boy statt nur Nintendo). Nur leer lassen, wenn wirklich keine passt." },
       zustand_stufe: { type: "string", enum: ["neu", "neu_sonstige", "wie_neu", "sehr_gut", "gut", "akzeptabel", "defekt"] },
       zustand_text: { type: "string", description: "Ehrliche, kurze Zustandsbeschreibung (max. 1000 Zeichen) – nur was auf den Fotos sichtbar ist oder im Hinweis steht." },
       ean: { type: "string", description: "EAN/Barcode-Nummer, falls auf einem Foto lesbar, sonst leer." },
@@ -282,7 +286,7 @@ ${vergText || "(keine gefunden)"}`,
 
   const kat = top.find((k) => k.id === String(d?.kategorie_id)) || top[0];
   const daten: any = shop === "nicideen" ? dN : dW;
-  const shopKatOk = daten?.storeKategorien?.some((k: any) => k.id === String(a.shop_kategorie_id));
+  const shopKatOk = blattKategorien(daten).some((k: any) => k.id === String(a.shop_kategorie_id));
 
   return {
     shop,
@@ -369,9 +373,11 @@ Antworte ausschließlich über das Werkzeug angebot_anpassen.`,
   };
 }
 
-/** Fehlende Pflichtangaben für das Einstellen */
-export function fehlendeAngaben(d: any, s: any) {
+/** Fehlende Pflichtangaben für das Einstellen (daten = Shop-Daten beider Shops, für die Shop-Kategorie) */
+export function fehlendeAngaben(d: any, s: any, daten?: any) {
   const f: string[] = [];
+  const blaetter = blattKategorien(daten?.[d.shop]);
+  if (blaetter.length && !blaetter.some((k: any) => k.id === String(d.shopKategorieId || ""))) f.push(d.shopKategorieId ? "Shop-Kategorie (bitte eine Unterkategorie wählen)" : "Shop-Kategorie");
   if (!d.titel) f.push("Titel");
   if (!d.preis || d.preis <= 0) f.push("Preis");
   if (!d.kategorieId) f.push("eBay-Kategorie");
@@ -397,6 +403,7 @@ const ALT_TOOL: any = {
       preis_begruendung: { type: "string", description: "1–2 Sätze, warum dieser Preis." },
       aenderungen: { type: "string", description: "Stichpunktartig in einem Satz: was wurde geändert (z. B. „Modellnummer in den Titel, ‚LESEN‘ entfernt, Preis 5 € runter“)." },
       rueckfrage: { type: "string", description: "Höchstens EINE kurze Rückfrage an Nicole (max. 15 Wörter), nur wenn für Käufer wirklich wichtig. Sonst leer." },
+      shop_kategorie_id: { type: "string", description: "ID der passendsten Shop-Kategorie aus der Liste (genaueste Unterkategorie). Wenn die bisherige passt, dieselbe ID." },
       batterie: { type: "boolean", description: "true, wenn der Artikel Batterien oder Akkus enthält oder damit betrieben wird (auch Knopfzellen, Spielmodule mit Speicherbatterie, Akku-Geräte). Sonst false." },
       unter3: { type: "boolean", description: "true, wenn Spielzeug/Sammelartikel mit Kleinteilen, nicht für Kinder unter 3 Jahren geeignet. Sonst false." },
     },
@@ -469,6 +476,9 @@ Merkmale: ${JSON.stringify(o.merkmale || {})}
 Alte Beschreibung (als Text):
 ${alsText(o.beschreibung).slice(0, 6000)}
 
+## Shop-Kategorien (ID = Pfad) – bisher: ${blattKategorien(daten).find((k: any) => k.id === o.shopKategorieId)?.pfad || "keine / unpassend"}
+${shopKatListe(daten)}
+
 ## Beschreibungsvorlage (HTML) des Shops
 <vorlage>
 ${vorlage}
@@ -502,5 +512,8 @@ Antworte ausschließlich über das Werkzeug angebot_ueberarbeitet.`;
     vergleich: vergleich.slice(0, 12),
     batterie: shop === "nicideen" ? true : !!a.batterie,
     u3: shop === "nicideen" ? true : !!a.unter3,
+    shopKategorieId: blattKategorien(daten).some((k: any) => k.id === String(a.shop_kategorie_id))
+      ? String(a.shop_kategorie_id)
+      : blattKategorien(daten).some((k: any) => k.id === o.shopKategorieId) ? o.shopKategorieId : "",
   };
 }

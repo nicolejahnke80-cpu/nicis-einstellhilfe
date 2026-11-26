@@ -799,7 +799,7 @@ function oeffne(id) {
   }
   const kat = (d.kategorien || []).find(k => k.id === d.kategorieId) || { aspekte: [], zustaende: [] };
   const sd = STATE.shops[d.shop]?.daten;
-  const skats = sd?.storeKategorien || [];
+  const skats = (sd?.storeKategorien || []).filter(k => k.blatt !== false);
   const aspekte = [...kat.aspekte].sort((a, b) => (b.pflicht - a.pflicht) || (b.empfohlen - a.empfohlen));
   const bekannt = new Set(aspekte.map(a => a.name));
   const extra = Object.keys(d.merkmale || {}).filter(k => !bekannt.has(k));
@@ -1019,6 +1019,7 @@ async function ladeAlt(neuLaden) {
 /** Stand der KI-Vorschläge für die sichtbaren Angebote holen (und aktualisieren, solange die KI arbeitet) */
 async function ladeVorschlaege() {
   clearTimeout(ALT.pollS);
+  await shopKats(ALT.shop);
   const ids = ALT.sortiert.slice(0, ALT.zeigen).map(i => i.itemId);
   if (!ids.length) return;
   try {
@@ -1122,6 +1123,7 @@ function renderAlt() {
         <div class="zeile"><input type="text" data-kt="${i.itemId}" value="${esc(s.titel)}" maxlength="80" style="flex:1"><span class="small mut" data-kc>${[...s.titel].length}/80</span></div>
         <div class="knoepfe"><button class="btn ${s.abgehakt ? "g" : ""}" data-kpasst="${i.itemId}">${s.abgehakt ? "✓ Abgehakt" : "✓ Passt"}</button><button class="btn s" data-altopen="${i.itemId}">Details ▾</button></div>
         <div class="zeile"><input type="text" data-kp="${i.itemId}" value="${String(s.preis ?? "").replace(".", ",")}"><span>€</span><span class="small mut">bisher ${euro(s.preisAlt)}${s.aenderungen ? " · " + esc(s.aenderungen) : ""}</span></div>
+        ${s.shopKat ? `<div class="small mut" style="grid-column:1/-1">🗂 Shop-Kategorie: <b>${esc(katName(ALT.shop, s.shopKat) || "?")}</b>${s.shopKatAlt && s.shopKatAlt !== s.shopKat ? ` (bisher ${esc(katName(ALT.shop, s.shopKatAlt) || "keine")})` : ""}</div>` : ""}
         ${s.rueckfrage ? `<div class="small" style="grid-column:1/-1;color:#4b2766">💬 ${esc(s.rueckfrage)}</div>` : ""}
         ${s.fehler ? `<div class="box err" style="grid-column:1/-1;margin:0">${esc(s.fehler)}</div>` : ""}
       </div>` : ""}
@@ -1172,7 +1174,14 @@ async function naechstenVorbereiten(id) {
   if (GESTARTET.has(ALT.shop + n.itemId)) return;
   try { const v = await api(`/alt/${ALT.shop}/item/${n.itemId}`); if (!v.status || v.status === "fehler") kiStarten(n.itemId); } catch {}
 }
+const SKATS = {};
+async function shopKats(shop) {
+  if (!SKATS[shop]) { try { const d = await api("/shopdaten/" + shop); SKATS[shop] = (d?.storeKategorien || []).filter(k => k.blatt !== false); } catch { SKATS[shop] = []; } }
+  return SKATS[shop];
+}
+const katName = (shop, id) => (SKATS[shop] || []).find(k => k.id === id)?.pfad || "";
 async function altOeffnen(id, kiNeu) {
+  await shopKats(ALT.shop);
   ALT.offen = id; clearTimeout(ALT.pollV);
   const card = $(`#altListe [data-alt="${id}"]`); if (!card) return;
   card.classList.add("offen");
@@ -1231,6 +1240,8 @@ function altEditor(w, id, v) {
       </div>
       ${v.ki?.preisBegruendung ? `<div class="small mut" style="margin-top:6px">💶 ${esc(v.ki.preisBegruendung)}</div>` : ""}
       ${v.ki?.vergleich?.length ? `<details><summary>Vergleichsangebote bei eBay (${v.ki.vergleich.length})</summary><div class="verg">${v.ki.vergleich.map(x => `<div><b>${euro(x.gesamt)}</b> <span class="mut">(${euro(x.preis)} + ${euro(x.versand)})</span> · ${esc(x.zustand || "")} · ${esc(x.titel)}</div>`).join("")}</div></details>` : ""}
+      <label class="f">Shop-Kategorie ${o.shopKategorieId && n.shopKategorieId !== o.shopKategorieId ? `<span class="vorher" style="text-transform:none">· bisher ${esc(katName(ALT.shop, o.shopKategorieId) || "keine / Oberkategorie")}</span>` : ""}</label>
+      <select data-k="shopKategorieId"><option value="">– keine –</option>${(SKATS[ALT.shop] || []).map(k => `<option value="${esc(k.id)}" ${k.id === (n.shopKategorieId || o.shopKategorieId) ? "selected" : ""}>${esc(k.pfad)}</option>`).join("")}</select>
       ${o.zustandId !== "1000" ? `<label class="f">Zustandsbeschreibung</label><textarea data-k="zustandText" rows="2">${esc(n.zustandText)}</textarea>` : ""}
       ${hinweisKreuze(n.batterie ?? ALT.shop === "nicideen", n.u3 ?? ALT.shop === "nicideen", "Werden beim Übernehmen unten an die Beschreibung angehängt und bei eBay unter „Produktsicherheit“ angekreuzt.")}
       <label class="f">Neue Beschreibung <a href="#" data-f="html" style="float:right;text-transform:none">HTML bearbeiten</a> <a href="#" data-f="altb" style="float:right;text-transform:none;margin-right:14px">Alte ansehen</a></label>
@@ -1269,6 +1280,7 @@ function altEditor(w, id, v) {
     if (sofort) return run();
     tm = setTimeout(run, 700);
   };
+  w.addEventListener("change", e => { if (e.target.tagName === "SELECT" && e.target.dataset.k) speichern(); });
   w.oninput = e => {
     const k = e.target.dataset.k; if (!k) return;
     if (k === "titel") titelInfo();
@@ -1335,6 +1347,7 @@ function altEditor(w, id, v) {
       if (Number(n.preis) !== Number(o.preis)) aend.push(`Preis ${euro(o.preis)} → ${euro(n.preis)}`);
       if ((n.zustandText || "") !== (o.zustandText || "") && o.zustandId !== "1000") aend.push("Zustand");
       if (n.bilder.join("|") !== o.bilder.join("|")) aend.push("Fotos");
+      if (n.shopKategorieId && n.shopKategorieId !== o.shopKategorieId) aend.push("Shop-Kategorie → " + (katName(ALT.shop, n.shopKategorieId) || n.shopKategorieId));
       if (n.batterie || n.u3) aend.push([n.batterie && "Batterie-Hinweis", n.u3 && "unter 3 Jahren"].filter(Boolean).join(" + "));
       if (!aend.length) return toast("Es gibt keine Änderungen zum Übernehmen.");
       if (!confirm(`Bei eBay ändern: ${aend.join(", ")}?\n\nDas Angebot läuft einfach weiter – nichts wird beendet.`)) return;

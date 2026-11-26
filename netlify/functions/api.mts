@@ -142,7 +142,8 @@ export default async (req: Request, context: Context) => {
       const s = await getSettings();
       const list = (await Promise.all(blobs.map((b) => getJSON(b.key)))).filter(Boolean);
       list.sort((a: any, b: any) => b.erstellt - a.erstellt);
-      return json(list.map((d: any) => ({ ...d, fehlt: d.status === "fertig" ? fehlendeAngaben(d, s) : [] })));
+      const daten = { nicideen: await getJSON("shopdaten/nicideen"), wonderland: await getJSON("shopdaten/wonderland") };
+      return json(list.map((d: any) => ({ ...d, fehlt: d.status === "fertig" ? fehlendeAngaben(d, s, daten) : [] })));
     }
     if (m === "POST" && path === "/drafts") {
       const b = await req.json();
@@ -263,6 +264,7 @@ export default async (req: Request, context: Context) => {
             status: v.status, fehler: v.fehler || "", abgehakt: !!v.abgehakt, uebernommen: v.uebernommen || 0,
             titel: v.neu?.titel || "", preis: v.neu?.preis ?? null, preisAlt: v.original?.preis ?? null,
             lager: v.lager || "", aenderungen: v.ki?.aenderungen || "", rueckfrage: v.ki?.rueckfrage || "",
+            shopKat: v.neu?.shopKategorieId || "", shopKatAlt: v.original?.shopKategorieId || "",
           };
         }));
         return json(out);
@@ -284,6 +286,7 @@ export default async (req: Request, context: Context) => {
           // Kreuzchen: einmal von Hand gesetzt, überschreibt die KI sie nicht mehr
           if ("batterie" in b) { v.neu.batterie = !!b.batterie; v.neu.batterieGesetzt = true; }
           if ("u3" in b) { v.neu.u3 = !!b.u3; v.neu.u3Gesetzt = true; }
+          if ("shopKategorieId" in b) { v.neu.shopKategorieId = String(b.shopKategorieId || ""); v.neu.shopKatGesetzt = true; }
           await setJSON(key, v);
           return json(v);
         }
@@ -312,12 +315,13 @@ export default async (req: Request, context: Context) => {
               zustandId: o.zustandId,
               bilder: bilderNeu ? n.bilder : undefined,
               sicherheitXml: sicherheitFuer(flags, s) || undefined,
+              shopKategorieId: n.shopKategorieId && n.shopKategorieId !== o.shopKategorieId ? n.shopKategorieId : undefined,
             });
             const stand: any = (await getJSON(standKey(shop))) || {};
             stand[itemId] = { status: "bearbeitet", zeit: Date.now(), preisAlt: o.preis, preisNeu: Number(n.preis) };
             await setJSON(standKey(shop), stand);
             // Original auf den neuen Stand bringen, damit ein zweites Übernehmen nur echte Änderungen schickt
-            v.original = { ...o, titel, beschreibung: beschrNeu, preis: Number(n.preis), zustandText: n.zustandText, bilder: n.bilder };
+            v.original = { ...o, shopKategorieId: n.shopKategorieId || o.shopKategorieId, titel, beschreibung: beschrNeu, preis: Number(n.preis), zustandText: n.zustandText, bilder: n.bilder };
             n.beschreibung = beschrNeu;
             v.uebernommen = Date.now();
             v.abgehakt = false;

@@ -1,4 +1,4 @@
-import { db, getSettings, imgKey, saveDraft, type Shop } from "./store.mts";
+import { db, getJSON, getSettings, imgKey, saveDraft, type Shop } from "./store.mts";
 import { anzeigeInKampagne, bildHochladen, cdata, esc, merkmaleFuer, produktsicherheitXml, trading } from "./ebay.mts";
 import { fehlendeAngaben } from "./ki.mts";
 
@@ -140,7 +140,7 @@ function gebuehren(data: any) {
 /** pruefen=true: nur prüfen (VerifyAddFixedPriceItem), sonst wirklich einstellen */
 export async function einstellen(d: any, pruefen: boolean) {
   const s = await getSettings();
-  const fehlt = fehlendeAngaben(d, s);
+  const fehlt = fehlendeAngaben(d, s, { [d.shop]: await getJSON(`shopdaten/${d.shop}`) });
   if (fehlt.length) throw new Error(`Es fehlt noch: ${fehlt.join(", ")}`);
 
   await bilderHochladen(d);

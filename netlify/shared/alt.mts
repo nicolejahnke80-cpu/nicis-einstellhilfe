@@ -64,6 +64,8 @@ export async function vorschlagErstellen(shop: Shop, itemId: string, wunsch = ""
         preis: v.preis,
         zustandText: v.zustandText,
         beschreibung: v.beschreibung,
+        shopKategorieId: aktuell.neu?.shopKatGesetzt ? aktuell.neu.shopKategorieId : v.shopKategorieId,
+        shopKatGesetzt: !!aktuell.neu?.shopKatGesetzt,
         // Kreuzchen: von Hand gesetzte bleiben, sonst Vorschlag der KI
         batterie: aktuell.neu?.batterieGesetzt ? aktuell.neu.batterie : v.batterie,
         u3: aktuell.neu?.u3Gesetzt ? aktuell.neu.u3 : v.u3,

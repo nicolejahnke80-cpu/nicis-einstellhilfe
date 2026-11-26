@@ -1,5 +1,5 @@
 import type { Config } from "@netlify/functions";
-import { checkAuth, getDraft, getSettings, saveDraft } from "../shared/store.mts";
+import { checkAuth, getDraft, getJSON, getSettings, saveDraft } from "../shared/store.mts";
 import { analysiere, anpassen, fehlendeAngaben } from "../shared/ki.mts";
 import { einstellen } from "../shared/einstellen.mts";
 
@@ -42,7 +42,7 @@ export default async (req: Request) => {
     await saveDraft(aktuell);
 
     const s = await getSettings();
-    if (s.autoEinstellen && r.ki.sicherheit === "hoch" && !fehlendeAngaben(aktuell, s).length) {
+    if (s.autoEinstellen && r.ki.sicherheit === "hoch" && !fehlendeAngaben(aktuell, s, { [aktuell.shop]: await getJSON(`shopdaten/${aktuell.shop}`) }).length) {
       try {
         aktuell.status = "einstellen";
         await saveDraft(aktuell);

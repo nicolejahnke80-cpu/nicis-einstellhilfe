@@ -489,6 +489,7 @@ export async function angebotDetails(shop: Shop, itemId: string) {
     menge: Number(it.Quantity || 1) - Number(it.SellingStatus?.QuantitySold || 0),
     verkauft: Number(it.SellingStatus?.QuantitySold || 0),
     sku: String(it.SKU || ""),
+    shopKategorieId: it.Storefront?.StoreCategoryID ? String(it.Storefront.StoreCategoryID) : "",
     start: it.ListingDetails?.StartTime || "",
     url: it.ListingDetails?.ViewItemURL || `https://www.ebay.de/itm/${it.ItemID}`,
   };
@@ -498,7 +499,7 @@ export async function angebotDetails(shop: Shop, itemId: string) {
 export async function angebotAendern(
   shop: Shop,
   itemId: string,
-  f: { titel?: string; beschreibung?: string; preis?: number; zustandText?: string; zustandId?: string; bilder?: string[]; sicherheitXml?: string }
+  f: { titel?: string; beschreibung?: string; preis?: number; zustandText?: string; zustandId?: string; bilder?: string[]; sicherheitXml?: string; shopKategorieId?: string }
 ) {
   const teile: string[] = [`<ItemID>${esc(itemId)}</ItemID>`];
   if (f.titel) teile.push(`<Title>${esc(f.titel)}</Title>`);
@@ -507,6 +508,7 @@ export async function angebotAendern(
   if (f.zustandText !== undefined && f.zustandId !== "1000") teile.push(`<ConditionDescription>${esc(String(f.zustandText).slice(0, 1000))}</ConditionDescription>`);
   if (f.bilder?.length) teile.push(`<PictureDetails>${f.bilder.slice(0, 24).map((u) => `<PictureURL>${esc(u)}</PictureURL>`).join("")}</PictureDetails>`);
   if (f.sicherheitXml) teile.push(f.sicherheitXml);
+  if (f.shopKategorieId) teile.push(`<Storefront><StoreCategoryID>${esc(f.shopKategorieId)}</StoreCategoryID></Storefront>`);
   const { warnungen } = await trading(shop, "ReviseFixedPriceItem", `<Item>${teile.join("")}</Item>`);
   return warnungen.map((w: any) => w.text);
 }

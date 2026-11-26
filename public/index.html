@@ -237,6 +237,7 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acc)
     <div class="row" style="margin-bottom:12px">
       <div><h2>Alte Angebote</h2><div class="mut small">Laufende Angebote verbessern – ohne Beenden. Beobachter und Verlauf bleiben erhalten.</div></div>
       <div class="sp"></div>
+      <div class="seg" id="altModus"><button data-v="alle" class="on">Alle</button><button data-v="leichen">🪦 Lagerleichen</button></div>
       <div class="seg" id="altShop"><button data-v="wonderland" class="on">Wonderland</button><button data-v="nicideen">Nicideen</button></div>
       <button class="btn" id="altLaden">Liste aktualisieren</button>
     </div>
@@ -251,7 +252,19 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acc)
       <label class="row small" style="gap:6px"><input type="checkbox" id="altErledigt"> Erledigte zeigen</label>
       <span class="sp"></span><span class="mut" id="altInfo"></span>
     </div>
-    <div class="row" style="margin-bottom:12px">
+    <div class="card hidden" id="leichenLeiste" style="margin-bottom:12px;padding:12px 16px;background:#fbf8fd">
+      <div class="row small">
+        <b>Lagerleiche =</b>
+        <span>online seit mind.</span><input type="number" id="lcTage" min="0" style="width:70px"><span>Tagen</span>
+        <span>· höchstens</span><input type="number" id="lcAufrufe" min="0" style="width:60px"><span>Aufrufe (30 Tage)</span>
+        <label class="row" style="gap:6px">· <input type="checkbox" id="lcBeob"> keine Beobachter</label>
+        <span class="sp"></span>
+        <button class="btn s" id="lcAlle">Alle auswählen</button>
+        <button class="btn s d" id="lcBeenden">Ausgewählte beenden</button>
+      </div>
+      <div class="small mut" style="margin-top:6px" id="lcInfo"></div>
+    </div>
+    <div class="row" style="margin-bottom:12px" id="altNormalLeiste">
       <button class="btn p" id="altVorbereiten">✨ Nächste 10 vorbereiten</button>
       <button class="btn g" id="altAlleUeber">Abgehakte übernehmen</button>
       <button class="btn" id="entBtn">🗑 Entsorgen-Liste</button>
@@ -945,7 +958,9 @@ $("#aufraeumen").onclick = async () => {
 
 // ---------- Alte Angebote ----------
 const GESTARTET = new Set();
-const ALT = { shop: "wonderland", liste: null, stand: {}, zeigen: 40, offen: null, v: null, pollL: null, pollV: null, sortiert: [], vs: {}, pollS: null };
+const LC = (() => { try { return { tage: 180, aufrufe: 2, beob: true, ...JSON.parse(localStorage.getItem("lc") || "{}") }; } catch { return { tage: 180, aufrufe: 2, beob: true }; } })();
+const LCWAHL = new Set();
+const ALT = { modus: "alle", shop: "wonderland", liste: null, stand: {}, zeigen: 40, offen: null, v: null, pollL: null, pollV: null, sortiert: [], vs: {}, pollS: null };
 const tage = iso => iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 864e5)) : null;
 const ebayBild = u => `/api/alt-bild?u=${encodeURIComponent(u)}&t=${KEY}`;
 /** wie auf dem Server: Lagerplatz (#17) ans Ende, ganze Wörter kürzen */
@@ -1039,6 +1054,7 @@ function sortiereAlt() {
   const L = ALT.liste?.items || [], mitT = !!ALT.liste?.traffic;
   const q = $("#altSuche").value.trim().toLowerCase(), alle = $("#altErledigt").checked;
   let l = L.filter(i => (!q || i.titel.toLowerCase().includes(q)) && (alle || (!ALT.stand[i.itemId] && !autoErledigt(i))));
+  if (ALT.modus === "leichen") l = l.filter(i => !ALT.stand[i.itemId] && istLeiche(i));
   const t = i => i.traffic || { impressionen: 0, aufrufe: 0, klickrate: 0 };
   const alter = (a, b) => String(a.start).localeCompare(String(b.start));
   const sort = $("#altSort").value;
@@ -1057,14 +1073,16 @@ function renderAlt() {
   if (li.status === "laedt" && !li.items?.length) { L.innerHTML = `<div class="leer"><span class="spin"></span> Lade alle laufenden Angebote und ihre Zahlen … (dauert etwa eine Minute)</div>`; $("#altInfo").textContent = ""; return; }
   const l = sortiereAlt(), erledigt = Object.values(ALT.stand).filter(s => s.status === "bearbeitet").length;
   $("#altInfo").innerHTML = `${l.length} offen · ${erledigt} bearbeitet${li.geladen ? ` · Stand ${new Date(li.geladen).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}` : ""}${li.status === "laedt" ? ' · <span class="spin"></span> aktualisiert' : ""}`;
-  if (!l.length) { L.innerHTML = `<div class="leer">${li.items?.length ? "Alles erledigt – oder der Filter ist zu streng. 🎉" : "Keine Angebote gefunden."}</div>`; $("#altMehr").classList.add("hidden"); return; }
+  if (!l.length) { lcLeiste(); L.innerHTML = `<div class="leer">${ALT.modus === "leichen" && li.items?.length ? "Keine Lagerleichen nach diesen Regeln. 🎉" : li.items?.length ? "Alles erledigt – oder der Filter ist zu streng. 🎉" : "Keine Angebote gefunden."}</div>`; $("#altMehr").classList.add("hidden"); return; }
   const offenBleibt = ALT.offen && L.querySelector(`[data-alt="${ALT.offen}"] .alted`);
   L.innerHTML = l.slice(0, ALT.zeigen).map(i => {
     const st = ALT.stand[i.itemId], auto = autoErledigt(i), tr = i.traffic, d = tage(i.start), s = ALT.vs[i.itemId];
     const chip = st?.status === "bearbeitet" ? `<span class="chip ok">✓ bearbeitet</span>` : st?.status === "uebersprungen" ? `<span class="chip">übersprungen</span>` : st?.status === "beendet" ? `<span class="chip err">beendet</span>` : auto ? `<span class="chip">${esc(auto)}</span>`
       : s?.status === "ki" ? `<span class="chip acc"><span class="spin"></span> KI arbeitet …</span>` : s?.fehler ? `<span class="chip err">Fehler</span>` : s?.status === "fertig" ? `<span class="chip ok">Vorschlag bereit</span>` : "";
-    const kurz = s?.status === "fertig" && !st && ALT.offen !== i.itemId;
-    return `<div class="card ${ALT.offen === i.itemId ? "offen" : ""} ${kurz && s.abgehakt ? "passt" : ""}" data-alt="${i.itemId}">
+    const kurz = s?.status === "fertig" && !st && ALT.offen !== i.itemId && ALT.modus !== "leichen";
+    const lc = ALT.modus === "leichen";
+    return `<div class="card ${ALT.offen === i.itemId ? "offen" : ""} ${kurz && s.abgehakt && !lc ? "passt" : ""}" data-alt="${i.itemId}">
+      ${lc ? `<label class="row" style="gap:10px;margin-bottom:8px;cursor:pointer;font-size:13px"><input type="checkbox" data-lc="${i.itemId}" ${LCWAHL.has(i.itemId) ? "checked" : ""}> auswählen</label>` : ""}
       <div class="az" data-altopen="${i.itemId}">
         <img src="${esc(i.bild)}" loading="lazy" alt="">
         <div><div class="t" ${kurz ? 'style="text-decoration:line-through;text-decoration-color:#c9bfb5;color:var(--mut);font-weight:500"' : ""}>${esc(i.titel)}</div>
@@ -1083,6 +1101,7 @@ function renderAlt() {
       <div class="altw"></div>
     </div>`;
   }).join("");
+  lcLeiste();
   const n = Object.entries(ALT.vs).filter(([id, s]) => s.abgehakt && s.status === "fertig" && !ALT.stand[id]).length;
   $("#altAlleUeber").textContent = n ? `Abgehakte übernehmen (${n})` : "Abgehakte übernehmen";
   $("#altMehr").classList.toggle("hidden", l.length <= ALT.zeigen);
@@ -1104,7 +1123,7 @@ let sT = null;
 $("#altSuche").oninput = () => { ALT.zeigen = 40; renderAlt(); clearTimeout(sT); sT = setTimeout(ladeVorschlaege, 400); };
 $("#altMehr").onclick = () => { ALT.zeigen += 40; renderAlt(); ladeVorschlaege(); };
 $("#altListe").addEventListener("click", e => {
-  if (e.target.dataset.kende) return;
+  if (e.target.dataset.kende || e.target.dataset.lc || e.target.closest("label")) return;
   const o = e.target.closest("[data-altopen]"); if (!o) return;
   const id = o.dataset.altopen;
   if (ALT.offen === id) { altSchliessen(); ladeVorschlaege(); return; }
@@ -1323,6 +1342,59 @@ $("#entLeeren").onclick = async () => {
   if (!ENT.length) return toast("Die Liste ist schon leer.");
   if (!confirm(`Entsorgen-Liste mit ${ENT.length} Artikeln komplett löschen?\n\nDas löscht nur diese Liste in der Einstellhilfe – bei eBay ändert sich nichts.`)) return;
   await api("/entsorgen", { method: "DELETE" }); await ladeEnt(); toast("Liste gelöscht ✓");
+};
+
+// ---------- Lagerleichen ----------
+function istLeiche(i) {
+  const d = tage(i.start);
+  if (d === null || d < LC.tage) return false;
+  if (LC.beob && i.beobachter > 0) return false;
+  if (ALT.liste?.traffic && i.traffic && i.traffic.aufrufe > LC.aufrufe) return false;
+  return true;
+}
+function lcLeiste() {
+  const an = ALT.modus === "leichen";
+  $("#leichenLeiste").classList.toggle("hidden", !an); $("#altNormalLeiste").classList.toggle("hidden", an);
+  $("#lcTage").value = LC.tage; $("#lcAufrufe").value = LC.aufrufe; $("#lcBeob").checked = LC.beob;
+  $("#lcAufrufe").disabled = !ALT.liste?.traffic;
+  const n = ALT.sortiert.length, w = [...LCWAHL].filter(id => ALT.sortiert.some(x => x.itemId === id));
+  $("#lcBeenden").textContent = w.length ? `Ausgewählte beenden (${w.length})` : "Ausgewählte beenden";
+  $("#lcInfo").textContent = `${n} Lagerleiche${n === 1 ? "" : "n"} gefunden${n ? ` · zusammen ${euro(ALT.sortiert.reduce((s, x) => s + x.preis, 0))} Angebotswert` : ""}.${ALT.liste?.traffic ? "" : " (Aufrufe erst nach „Neu verbinden“ unter Einstellungen.)"} Beendete Angebote kommen auf die Entsorgen-Liste.`;
+}
+$("#altModus").onclick = e => {
+  const v = e.target.dataset.v; if (!v || v === ALT.modus) return;
+  ALT.modus = v; LCWAHL.clear(); altSchliessen(); ALT.zeigen = v === "leichen" ? 2000 : 40;
+  $$("#altModus button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  $("#altSort").value = v === "leichen" ? "alt" : "wenig";
+  renderAlt(); ladeVorschlaege();
+};
+["lcTage", "lcAufrufe", "lcBeob"].forEach(id => $("#" + id).onchange = () => {
+  LC.tage = Math.max(0, parseInt($("#lcTage").value) || 0); LC.aufrufe = Math.max(0, parseInt($("#lcAufrufe").value) || 0); LC.beob = $("#lcBeob").checked;
+  try { localStorage.setItem("lc", JSON.stringify(LC)); } catch {}
+  renderAlt();
+});
+$("#altListe").addEventListener("change", e => {
+  const id = e.target.dataset.lc; if (!id) return;
+  e.target.checked ? LCWAHL.add(id) : LCWAHL.delete(id); lcLeiste();
+});
+$("#lcAlle").onclick = () => {
+  const alle = ALT.sortiert.every(x => LCWAHL.has(x.itemId));
+  ALT.sortiert.forEach(x => alle ? LCWAHL.delete(x.itemId) : LCWAHL.add(x.itemId));
+  renderAlt();
+};
+$("#lcBeenden").onclick = async () => {
+  const ids = [...LCWAHL].filter(id => ALT.sortiert.some(x => x.itemId === id));
+  if (!ids.length) return toast("Erst Angebote auswählen.");
+  if (!confirm(`${ids.length} Angebote bei eBay beenden?\n\nSie verschwinden aus dem Shop und kommen auf die Entsorgen-Liste. Bei eBay findest du sie danach unter „Nicht verkauft“.`)) return;
+  const b = $("#lcBeenden"); b.disabled = true; let ok = 0, err = 0;
+  for (const id of ids) {
+    b.textContent = `Beende … ${ok + err + 1}/${ids.length}`;
+    const r = await api(`/alt/${ALT.shop}/item/${id}/beenden`, { method: "POST", json: {}, roh: true }).catch(() => ({ ok: false }));
+    if (r.ok) { ok++; ALT.stand[id] = { status: "beendet" }; LCWAHL.delete(id); } else err++;
+  }
+  b.disabled = false;
+  toast(`${ok} Angebote beendet${err ? `, ${err} mit Fehler` : ""} – sie stehen jetzt auf der Entsorgen-Liste.`, 5000);
+  renderAlt(); ladeEnt();
 };
 
 /** Angebot bei eBay beenden – mit Sicherheitsabfrage */

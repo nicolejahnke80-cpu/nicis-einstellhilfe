@@ -442,7 +442,15 @@ ${TITELREGELN}
 - Beschreibung: Übernimm die Vorlage des Shops 1:1 in Aufbau, HTML, CSS, Farben, Überschriften und festen Textbausteinen (z. B. Versand-, Rechts- oder Grußtexte, Hinweise). Fülle sie mit den Inhalten aus dem alten Angebot. Alle wichtigen Infos aus der alten Beschreibung behalten (Lieferumfang, Mängel, Funktion, Maße). Kein JavaScript, keine externen Bilder.
 - Ehrlich bleiben: Nichts behaupten, was nicht im alten Angebot steht, auf den Fotos zu sehen ist oder von Nicole kommt.
 - Preis: Nicole zahlt den Versand selbst. Vergleiche mit den GESAMTpreisen (Preis + Versand) wirklich vergleichbarer Angebote. Das Angebot ist schon ${tageOnline ?? "?"} Tage online${stats ? ` und hatte in den letzten 30 Tagen ${stats.impressionen} Impressionen und ${stats.aufrufe} Aufrufe` : ""}, ${o.beobachter} Beobachter. Wenn der Preis über vergleichbaren Angeboten liegt, moderat senken (auf ,99 / ,95 / ,00 enden). Wenn er schon passt, gleich lassen. Nicht verschenken.
-${wunsch ? `\nInfos / Wunsch von Nicole (hat Vorrang):\n${wunsch}\n` : ""}
+${wunsch ? `\n## Infos von Nicole – VERBINDLICH, haben Vorrang vor allem anderen
+${wunsch}
+
+Diese Infos MÜSSEN im Ergebnis stehen:
+- Fehlende Teile, Mängel oder Einschränkungen: im Titel kurz und konkret (z. B. „Fisch und weißes Tier fehlen“ bzw. „2 Tiere fehlen“), in der Zustandsbeschreibung und in der Beschreibung (z. B. im Lieferumfang).
+- Positive Infos (getestet, vollständig, mit Anleitung …) ebenso übernehmen.
+- Widersprechende alte Aussagen entfernen.
+- Eine Rückfrage zu etwas, das hier schon beantwortet ist, NICHT noch einmal stellen.
+` : ""}
 ## Altes Angebot
 Titel: ${o.titel}
 Preis: ${o.preis} €

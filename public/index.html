@@ -958,6 +958,8 @@ $("#aufraeumen").onclick = async () => {
 
 // ---------- Alte Angebote ----------
 const GESTARTET = new Set();
+/** Angebote, für die gerade ein NEUER Vorschlag läuft: id → { zeit: Zeitstempel des alten Vorschlags, seit } */
+const WARTE = {};
 const LC = (() => { try { return { tage: 180, aufrufe: 2, beob: true, ...JSON.parse(localStorage.getItem("lc") || "{}") }; } catch { return { tage: 180, aufrufe: 2, beob: true }; } })();
 const LCWAHL = new Set();
 const ALT = { modus: "alle", shop: "wonderland", liste: null, stand: {}, zeigen: 40, offen: null, v: null, pollL: null, pollV: null, sortiert: [], vs: {}, pollS: null };
@@ -1153,8 +1155,12 @@ async function altOeffnen(id, kiNeu) {
   let v;
   try { v = await api(`/alt/${ALT.shop}/item/${id}`); } catch (e) { w.innerHTML = `<div class="box err">${esc(e.message)}</div>`; return; }
   if (ALT.offen !== id) return;
+  if (kiNeu) WARTE[id] = { zeit: v.zeit || 0, seit: Date.now() };
   if ((!v.status && !GESTARTET.has(ALT.shop + id)) || kiNeu) { await kiStarten(id); naechstenVorbereiten(id); }
   if (!v.status) v.status = "ki";
+  // Neuer Vorschlag angefordert: so lange warten, bis wirklich ein neuer da ist (max. 3 Minuten)
+  const wt = WARTE[id];
+  if (wt) { if ((v.zeit || 0) !== wt.zeit || Date.now() - wt.seit > 180000) delete WARTE[id]; else v.status = "ki"; }
   if (v.status === "ki") {
     w.innerHTML = `<div class="box info" style="margin-top:14px"><span class="spin"></span> Die KI überarbeitet Titel, Beschreibung und Preis … (ca. 30–60 Sekunden)</div>`;
     ALT.pollV = setTimeout(() => ALT.offen === id && altOeffnen(id), 3500); return;
@@ -1184,6 +1190,7 @@ function altEditor(w, id, v) {
       <label class="f">Infos für die KI</label>
       <textarea data-f="wunsch" rows="3" placeholder="z. B. getestet, funktioniert · Preis nicht unter 20 € · Anleitung fehlt"></textarea>
       <div class="row" style="margin-top:8px"><button class="btn s" data-f="neu">✎ Neu vorschlagen</button></div>
+      ${v.wunsch ? `<div class="box" style="background:#f4f0ea">Deine Infos (fließen in jeden Vorschlag ein):<br>${esc(v.wunsch).replace(/\n/g, "<br>")}</div>` : ""}
     </div>
     <div>
       ${v.uebernommen ? `<div class="box ok" style="margin-top:0">Bei eBay übernommen ✓ (${new Date(v.uebernommen).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })})${v.warnungen?.length ? "<br>" + v.warnungen.map(esc).join("<br>") : ""}</div>` : ""}
@@ -1275,8 +1282,10 @@ function altEditor(w, id, v) {
     }
     if (f === "neu") {
       const wunsch = $("[data-f=wunsch]", w).value.trim();
-      await speichern(true); await kiStarten(id, wunsch);
-      toast("Neuer Vorschlag wird erstellt …"); return altOeffnen(id);
+      await speichern(true);
+      WARTE[id] = { zeit: v.zeit || 0, seit: Date.now() };
+      await kiStarten(id, wunsch);
+      toast(wunsch ? "Neuer Vorschlag mit deinen Infos wird erstellt …" : "Neuer Vorschlag wird erstellt …"); return altOeffnen(id);
     }
     if (f === "angebot") {
       const p = Number($("[data-f=prozent]", w).value);

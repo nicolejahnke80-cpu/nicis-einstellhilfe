@@ -42,12 +42,16 @@ export async function listeLaden(shop: Shop) {
 export async function vorschlagErstellen(shop: Shop, itemId: string, wunsch = "") {
   const key = itemKey(shop, itemId);
   const vorher: any = (await getJSON(key)) || {};
-  await setJSON(key, { ...vorher, status: "ki", fehler: "", wunsch: [vorher.wunsch, wunsch].filter(Boolean).join("\n").slice(0, 3000) });
+  // Infos sammeln (gleiche Info nicht doppelt)
+  const alle = String(vorher.wunsch || "").split("\n").filter(Boolean);
+  if (wunsch && !alle.includes(wunsch.trim())) alle.push(wunsch.trim());
+  const wunschAlle = alle.join("\n").slice(0, 3000);
+  await setJSON(key, { ...vorher, status: "ki", fehler: "", wunsch: wunschAlle });
   try {
     const original = await angebotDetails(shop, itemId);
     const liste: any = await getJSON(listeKey(shop));
     const stats = liste?.traffic ? liste.items?.find((i: any) => i.itemId === itemId)?.traffic : null;
-    const v = await altVorschlag(shop, original, stats, [vorher.wunsch, wunsch].filter(Boolean).join("\n"));
+    const v = await altVorschlag(shop, original, stats, wunschAlle);
     const aktuell: any = (await getJSON(key)) || {};
     await setJSON(key, {
       ...aktuell,
@@ -68,6 +72,6 @@ export async function vorschlagErstellen(shop: Shop, itemId: string, wunsch = ""
     });
   } catch (e: any) {
     const aktuell: any = (await getJSON(key)) || {};
-    await setJSON(key, { ...aktuell, status: "fehler", fehler: e.message || "Vorschlag fehlgeschlagen" });
+    await setJSON(key, { ...aktuell, status: "fehler", fehler: e.message || "Vorschlag fehlgeschlagen", zeit: Date.now() });
   }
 }

@@ -23,3 +23,14 @@ Mac-Web-App: Fotos rein → KI (Claude über Netlify AI Gateway oder eigener ANT
 
 ## Änderung 24.11.2026
 - Titelregeln im KI-Prompt (netlify/shared/ki.mts, analysiere) verschärft: Marke → Serie/Modell → Modell-/Setnummer → Artikelart → Größe/Farbe/Plattform → Zustand; eigene Muster für Videospiele, Sammelkarten, LEGO, Tupperware/Haushalt, Telefone/Technik/Ersatzteile; Mängel konkret statt „LESEN!!!“; keine Füllwörter. Diese Regeln haben Vorrang vor dem Stil der alten Titel.
+
+## Änderung 26.11.2026
+- **Fotos zuschneiden** (✂): bei neuen Artikeln (vor dem Hochladen), in den Entwurfs-Details (Foto anklicken; lädt voll+ki neu, eBay-Bild wird beim Einstellen neu hochgeladen) und bei alten Angeboten. Seitenverhältnis frei / Quadrat / 4:3.
+- **Neuer Tab „Alte Angebote“**: laufende Angebote bearbeiten OHNE Beenden (ReviseFixedPriceItem) – Beobachter und Verlauf bleiben.
+  - Liste lädt im Hintergrund (`/api/alt-ki`, job=liste): alle aktiven Angebote + Traffic 30 Tage (Analytics-API). Sortierung: wenigste Aufrufe zuerst (Standard), viel gesehen/kaum geklickt, am längsten online, teuerste. Grinch-Titel gelten als schon erledigt.
+  - Beim Öffnen erstellt die KI einen Vorschlag (Titel nach Titelregeln, Beschreibung in der Shop-Vorlage, Preis mit Vergleichsangeboten); das nächste Angebot wird schon vorbereitet.
+  - Fotos: zuschneiden, als Titelbild setzen, entfernen, neues Titelbild hochladen (über Media-API).
+  - Preisvorschlag an Beobachter (Negotiation-API, 2 Tage gültig).
+  - Lagerplatz (#…) aus altem Titel/SKU bleibt am Titelende.
+  - Daten: `alt/{shop}/liste`, `alt/{shop}/stand`, `alt/{shop}/item/{id}`.
+- **eBay-Berechtigung**: neuer Scope `sell.analytics.readonly`. Token speichert jetzt seine Scopes; alte Tokens werden weiter mit den alten Scopes erneuert. Für Traffic-Zahlen beide Shops einmal „Neu verbinden“.

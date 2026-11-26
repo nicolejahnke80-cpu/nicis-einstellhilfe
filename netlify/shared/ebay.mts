@@ -6,12 +6,21 @@ const SITE_ID = "77"; // eBay.de
 const TREE_ID = "77";
 const COMPAT = () => Netlify.env.get("EBAY_COMPAT_LEVEL") || "1451";
 
-export const SCOPES = [
+/** Berechtigungen der ersten Version – Tokens ohne gespeicherte Scopes wurden damit erteilt */
+const ALTE_SCOPES = [
   "https://api.ebay.com/oauth/api_scope",
   "https://api.ebay.com/oauth/api_scope/sell.inventory",
   "https://api.ebay.com/oauth/api_scope/sell.account",
   "https://api.ebay.com/oauth/api_scope/sell.marketing",
 ].join(" ");
+const ANALYTICS_SCOPE = "https://api.ebay.com/oauth/api_scope/sell.analytics.readonly";
+export const SCOPES = `${ALTE_SCOPES} ${ANALYTICS_SCOPE}`;
+
+/** Hat die Verbindung dieses Shops schon die Berechtigung für Traffic-Zahlen? */
+export async function hatTrafficRecht(shop: Shop) {
+  const t: any = await getJSON(`token/${shop}`);
+  return !!t?.refresh_token && String(t.scopes || ALTE_SCOPES).includes(ANALYTICS_SCOPE);
+}
 
 export class EbayError extends Error {
   details: any;
@@ -80,6 +89,7 @@ export async function exchangeCode(shop: Shop, code: string) {
     refresh_token: j.refresh_token,
     refresh_expires: now + (j.refresh_token_expires_in || 0) * 1000,
     verbunden: now,
+    scopes: SCOPES,
   };
   await setJSON(`token/${shop}`, t);
   return t;
@@ -89,7 +99,8 @@ export async function userToken(shop: Shop): Promise<string> {
   const t: any = await getJSON(`token/${shop}`);
   if (!t?.refresh_token) throw new EbayError(`Shop „${shop}“ ist noch nicht mit eBay verbunden.`);
   if (t.access_token && t.access_expires > Date.now()) return t.access_token;
-  const j = await tokenRequest({ grant_type: "refresh_token", refresh_token: t.refresh_token, scope: SCOPES });
+  // nur die Scopes anfragen, die bei der Verbindung auch erteilt wurden
+  const j = await tokenRequest({ grant_type: "refresh_token", refresh_token: t.refresh_token, scope: t.scopes || ALTE_SCOPES });
   t.access_token = j.access_token;
   t.access_expires = Date.now() + (j.expires_in - 120) * 1000;
   await setJSON(`token/${shop}`, t);
@@ -391,4 +402,126 @@ export async function anzeigeInKampagne(shop: Shop, campaignId: string, listingI
     method: "POST",
     body: { listingId, bidPercentage: prozent.toFixed(1) },
   });
+}
+
+// ---------- Alte Angebote ----------
+const num = (x: any) => Number(x?.["#text"] ?? x ?? 0) || 0;
+const ymd = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, "");
+
+/** Alle aktiven Angebote eines Shops (max. 2000) */
+export async function aktiveAngebote(shop: Shop) {
+  const seite = (n: number) =>
+    trading(
+      shop,
+      "GetMyeBaySelling",
+      `<ActiveList><Include>true</Include><IncludeWatchCount>true</IncludeWatchCount><Sort>StartTime</Sort><Pagination><EntriesPerPage>200</EntriesPerPage><PageNumber>${n}</PageNumber></Pagination></ActiveList><DetailLevel>ReturnAll</DetailLevel>`
+    ).then((r) => r.data.ActiveList);
+  const erste = await seite(1);
+  const seiten = Math.min(Number(erste?.PaginationResult?.TotalNumberOfPages || 1), 10);
+  const rest = await Promise.all(Array.from({ length: seiten - 1 }, (_, i) => seite(i + 2)));
+  const items = [erste, ...rest].flatMap((l: any) => l?.ItemArray?.Item || []);
+  return items.map((i: any) => ({
+    itemId: String(i.ItemID),
+    titel: String(i.Title || ""),
+    preis: num(i.BuyItNowPrice) || num(i.SellingStatus?.CurrentPrice),
+    bild: i.PictureDetails?.GalleryURL || "",
+    beobachter: Number(i.WatchCount || 0),
+    start: i.ListingDetails?.StartTime || "",
+    menge: Number(i.QuantityAvailable ?? i.Quantity ?? 1),
+    sku: String(i.SKU || ""),
+  }));
+}
+
+/** Traffic der letzten 30 Tage je Angebot (braucht die Analytics-Berechtigung) */
+export async function trafficProAngebot(shop: Shop, ids: string[]) {
+  const token = await userToken(shop);
+  const ende = new Date(Date.now() - 2 * 864e5);
+  const start = new Date(ende.getTime() - 29 * 864e5);
+  const out: Record<string, { impressionen: number; aufrufe: number; klickrate: number; verkauft: number }> = {};
+  const stuecke: string[][] = [];
+  for (let i = 0; i < ids.length; i += 200) stuecke.push(ids.slice(i, i + 200));
+  await Promise.all(
+    stuecke.map(async (teil) => {
+      const filter = `listing_ids:{${teil.join("|")}},marketplace_ids:{EBAY_DE},date_range:[${ymd(start)}..${ymd(ende)}]`;
+      const { data } = await rest(
+        `/sell/analytics/v1/traffic_report?dimension=LISTING&metric=LISTING_IMPRESSION_TOTAL,LISTING_VIEWS_TOTAL,CLICK_THROUGH_RATE,TRANSACTION&filter=${encodeURIComponent(filter)}`,
+        { token }
+      );
+      const keys = (data.header?.metrics || []).map((m: any) => m.key);
+      for (const r of data.records || []) {
+        const id = String(r.dimensionValues?.[0]?.value || "");
+        const v: any = {};
+        keys.forEach((k: string, i: number) => (v[k] = Number(r.metricValues?.[i]?.value || 0)));
+        out[id] = {
+          impressionen: v.LISTING_IMPRESSION_TOTAL || 0,
+          aufrufe: v.LISTING_VIEWS_TOTAL || 0,
+          klickrate: v.CLICK_THROUGH_RATE || 0,
+          verkauft: v.TRANSACTION || 0,
+        };
+      }
+    })
+  );
+  return out;
+}
+
+/** Ein Angebot komplett laden */
+export async function angebotDetails(shop: Shop, itemId: string) {
+  const { data } = await trading(
+    shop,
+    "GetItem",
+    `<ItemID>${esc(itemId)}</ItemID><DetailLevel>ReturnAll</DetailLevel><IncludeItemSpecifics>true</IncludeItemSpecifics><IncludeWatchCount>true</IncludeWatchCount>`
+  );
+  const it: any = data.Item?.[0] || data.Item;
+  if (!it) throw new EbayError("Angebot nicht gefunden.");
+  return {
+    itemId: String(it.ItemID),
+    titel: String(it.Title || ""),
+    preis: num(it.StartPrice),
+    beschreibung: String(it.Description || ""),
+    // größte Variante der eBay-Fotos (s-l1600)
+    bilder: (it.PictureDetails?.PictureURL || []).map((u: string) => String(u)),
+    zustandId: String(it.ConditionID || ""),
+    zustandName: String(it.ConditionDisplayName || ""),
+    zustandText: String(it.ConditionDescription || ""),
+    kategorie: { id: String(it.PrimaryCategory?.CategoryID || ""), name: String(it.PrimaryCategory?.CategoryName || "") },
+    merkmale: Object.fromEntries((it.ItemSpecifics?.NameValueList || []).map((n: any) => [n.Name, (n.Value || []).join(", ")])),
+    beobachter: Number(it.WatchCount || 0),
+    menge: Number(it.Quantity || 1) - Number(it.SellingStatus?.QuantitySold || 0),
+    verkauft: Number(it.SellingStatus?.QuantitySold || 0),
+    sku: String(it.SKU || ""),
+    start: it.ListingDetails?.StartTime || "",
+    url: it.ListingDetails?.ViewItemURL || `https://www.ebay.de/itm/${it.ItemID}`,
+  };
+}
+
+/** Laufendes Angebot ändern – ohne Beenden (Beobachter und Verlauf bleiben) */
+export async function angebotAendern(
+  shop: Shop,
+  itemId: string,
+  f: { titel?: string; beschreibung?: string; preis?: number; zustandText?: string; zustandId?: string; bilder?: string[] }
+) {
+  const teile: string[] = [`<ItemID>${esc(itemId)}</ItemID>`];
+  if (f.titel) teile.push(`<Title>${esc(f.titel)}</Title>`);
+  if (f.beschreibung) teile.push(`<Description>${cdata(f.beschreibung)}</Description>`);
+  if (f.preis && f.preis > 0) teile.push(`<StartPrice currencyID="EUR">${Number(f.preis).toFixed(2)}</StartPrice>`);
+  if (f.zustandText !== undefined && f.zustandId !== "1000") teile.push(`<ConditionDescription>${esc(String(f.zustandText).slice(0, 1000))}</ConditionDescription>`);
+  if (f.bilder?.length) teile.push(`<PictureDetails>${f.bilder.slice(0, 24).map((u) => `<PictureURL>${esc(u)}</PictureURL>`).join("")}</PictureDetails>`);
+  const { warnungen } = await trading(shop, "ReviseFixedPriceItem", `<Item>${teile.join("")}</Item>`);
+  return warnungen.map((w: any) => w.text);
+}
+
+/** Preisvorschlag an alle Beobachter senden */
+export async function angebotAnBeobachter(shop: Shop, itemId: string, prozent: number, nachricht: string) {
+  const token = await userToken(shop);
+  const { data } = await rest("/sell/negotiation/v1/send_offer_to_interested_buyers", {
+    token,
+    method: "POST",
+    body: {
+      allowCounterOffer: false,
+      message: nachricht.slice(0, 2000),
+      offerDuration: { unit: "DAY", value: 2 },
+      offeredItems: [{ listingId: itemId, discountPercentage: String(Math.round(prozent)), quantity: 1 }],
+    },
+  });
+  return data;
 }

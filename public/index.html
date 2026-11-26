@@ -111,6 +111,44 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acc)
 .aktionen{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
 .leer{text-align:center;padding:60px 20px;color:var(--mut)}
 
+/* Zuschneiden */
+.th .cr{position:absolute;bottom:3px;right:3px;border:0;background:#000a;color:#fff;border-radius:6px;font-size:12px;padding:1px 6px;cursor:pointer;display:none}
+.th:hover .cr{display:block}
+#crop{position:fixed;inset:0;background:#000b;z-index:60;display:grid;place-items:center;padding:20px}
+#crop .card{max-width:min(940px,96vw)}
+.cropwrap{position:relative;margin:12px auto 0;width:fit-content;user-select:none;-webkit-user-select:none;touch-action:none;overflow:hidden;line-height:0;background:#222;border-radius:8px}
+#cropImg{display:block;max-width:min(880px,90vw);max-height:68vh;pointer-events:none}
+#cropSel{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px #0009;cursor:move}
+#cropSel:before,#cropSel:after{content:"";position:absolute;inset:33.3% 0;border-top:1px solid #fff6;border-bottom:1px solid #fff6;pointer-events:none}
+#cropSel:after{inset:0 33.3%;border:0;border-left:1px solid #fff6;border-right:1px solid #fff6}
+#cropSel i{position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;border:2px solid var(--acc)}
+#cropSel i[data-h=nw]{left:-10px;top:-10px;cursor:nwse-resize} #cropSel i[data-h=ne]{right:-10px;top:-10px;cursor:nesw-resize}
+#cropSel i[data-h=sw]{left:-10px;bottom:-10px;cursor:nesw-resize} #cropSel i[data-h=se]{right:-10px;bottom:-10px;cursor:nwse-resize}
+.ed .bilder .bw{position:relative;cursor:pointer}
+.ed .bilder .bw:first-child{grid-column:span 3}
+.ed .bilder .bw img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#eee;display:block}
+.ed .bilder .bw:first-child img{aspect-ratio:4/3}
+.ed .bilder .bw .tip{position:absolute;bottom:5px;right:5px;background:#000a;color:#fff;border-radius:6px;font-size:11px;padding:1px 6px;display:none}
+.ed .bilder .bw:hover .tip{display:block}
+
+/* Alte Angebote */
+.az{display:grid;grid-template-columns:64px 1fr auto;gap:14px;align-items:center;cursor:pointer}
+.az img{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#eee}
+.az .t{font-weight:600}
+.az .zahlen{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--mut);margin-top:2px}
+.az .zahlen b{color:var(--ink);font-weight:600}
+.card.offen{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc2)}
+.altfotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.altfotos .af{position:relative}
+.altfotos .af:first-child{grid-column:span 3}
+.altfotos .af img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#eee;display:block}
+.altfotos .af:first-child img{aspect-ratio:4/3}
+.altfotos .af .k{position:absolute;top:4px;right:4px;display:flex;gap:4px}
+.altfotos .af .k button{border:0;background:#000a;color:#fff;border-radius:6px;font-size:12px;padding:2px 7px;cursor:pointer}
+.altfotos .af:first-child:after{content:"Titelbild";position:absolute;left:6px;bottom:6px;background:var(--acc);color:#fff;font-size:11px;border-radius:6px;padding:1px 7px}
+.alttitel{font-size:12.5px;color:var(--mut);margin-top:4px;text-decoration:line-through;text-decoration-color:#c9bfb5}
+.vorher{font-size:12.5px;color:var(--mut)}
+
 /* Login */
 #login{max-width:400px;margin:12vh auto}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:12px;z-index:50;font-size:14px;box-shadow:0 8px 30px #0003}
@@ -142,6 +180,7 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acc)
     <button data-tab="neu" class="on">Neue Artikel</button>
     <button data-tab="entw">Entwürfe<span class="n" id="nEntw">0</span></button>
     <button data-tab="fertig">Eingestellt<span class="n" id="nFertig">0</span></button>
+    <button data-tab="alt">Alte Angebote</button>
     <button data-tab="einst">Einstellungen</button>
   </nav>
   <div class="sp"></div>
@@ -187,6 +226,30 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acc)
     <div class="dl" id="fertigListe"></div>
   </section>
 
+  <!-- ALTE ANGEBOTE -->
+  <section id="tab-alt" class="hidden">
+    <div class="row" style="margin-bottom:12px">
+      <div><h2>Alte Angebote</h2><div class="mut small">Laufende Angebote verbessern – ohne Beenden. Beobachter und Verlauf bleiben erhalten.</div></div>
+      <div class="sp"></div>
+      <div class="seg" id="altShop"><button data-v="wonderland" class="on">Wonderland</button><button data-v="nicideen">Nicideen</button></div>
+      <button class="btn" id="altLaden">Liste aktualisieren</button>
+    </div>
+    <div class="row small" style="margin-bottom:10px">
+      <select id="altSort" style="width:auto">
+        <option value="wenig">Wenigste Aufrufe zuerst</option>
+        <option value="klick">Viel gesehen, kaum geklickt</option>
+        <option value="alt">Am längsten online</option>
+        <option value="teuer">Teuerste zuerst</option>
+      </select>
+      <input type="search" id="altSuche" placeholder="Im Titel suchen …" style="width:220px">
+      <label class="row small" style="gap:6px"><input type="checkbox" id="altErledigt"> Erledigte zeigen</label>
+      <span class="sp"></span><span class="mut" id="altInfo"></span>
+    </div>
+    <div id="altHinweis" class="box warn hidden" style="margin:0 0 12px"></div>
+    <div class="dl" id="altListe"></div>
+    <div class="row" style="justify-content:center;margin-top:14px"><button class="btn hidden" id="altMehr">Mehr anzeigen</button></div>
+  </section>
+
   <!-- EINSTELLUNGEN -->
   <section id="tab-einst" class="hidden">
     <h2>Einstellungen</h2>
@@ -208,6 +271,20 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acc)
     </div>
   </section>
 </main>
+</div>
+
+<div id="crop" class="hidden">
+  <div class="card">
+    <div class="row"><b>Foto zuschneiden</b><span class="sp"></span>
+      <div class="seg" id="cropRatio"><button data-r="0" class="on">Frei</button><button data-r="1">Quadrat</button><button data-r="1.3333">4:3</button></div>
+    </div>
+    <div class="cropwrap" id="cropWrap"><img id="cropImg" alt=""><div id="cropSel"><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div></div>
+    <div class="row" style="margin-top:12px">
+      <span class="mut small">Rahmen verschieben oder an den Ecken ziehen. Tipp: Der Artikel sollte das Bild gut ausfüllen.</span>
+      <span class="sp"></span>
+      <button class="btn" id="cropAbbr">Abbrechen</button><button class="btn p" id="cropOk">Übernehmen</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -268,8 +345,69 @@ $("#login").addEventListener("keydown", e => { if (e.key === "Enter") $("#loginB
 // ---------- Tabs ----------
 function tab(n) {
   $$("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === n));
-  ["neu", "entw", "fertig", "einst"].forEach(t => $("#tab-" + t).classList.toggle("hidden", t !== n));
+  ["neu", "entw", "fertig", "alt", "einst"].forEach(t => $("#tab-" + t).classList.toggle("hidden", t !== n));
   if (n === "einst") renderEinst();
+  if (n === "alt") ladeAlt();
+}
+
+// ---------- Zuschneiden ----------
+/** Öffnet das Zuschneide-Fenster. src = Bild-Adresse (gleiche Herkunft oder blob:) → Promise<Blob|null> */
+function zuschneiden(src) {
+  return new Promise(fertig => {
+    const box = $("#crop"), img = $("#cropImg"), sel = $("#cropSel"), wrap = $("#cropWrap");
+    let r = 0, s = null, drag = null;
+    const zeig = () => { sel.style.left = s.x + "px"; sel.style.top = s.y + "px"; sel.style.width = s.w + "px"; sel.style.height = s.h + "px"; };
+    const W = () => img.clientWidth, H = () => img.clientHeight;
+    const start = () => {
+      const w = W(), h = H(); let bw = w * 0.9, bh = h * 0.9;
+      if (r) { if (bw / bh > r) bw = bh * r; else bh = bw / r; }
+      s = { x: (w - bw) / 2, y: (h - bh) / 2, w: bw, h: bh }; zeig();
+    };
+    const ende = ergebnis => {
+      box.classList.add("hidden"); img.removeAttribute("src");
+      wrap.onpointerdown = null; window.onpointermove = null; window.onpointerup = null; document.onkeydown = null;
+      fertig(ergebnis);
+    };
+    $$("#cropRatio button").forEach(b => { b.classList.toggle("on", b.dataset.r === "0"); b.onclick = () => { r = +b.dataset.r; $$("#cropRatio button").forEach(x => x.classList.toggle("on", x === b)); start(); }; });
+    img.onload = () => start();
+    img.onerror = () => { toast("Das Foto konnte nicht geladen werden."); ende(null); };
+    img.src = src;
+    box.classList.remove("hidden");
+    wrap.onpointerdown = e => {
+      if (!s) return;
+      const h = e.target.dataset?.h;
+      if (!h && e.target !== sel) return;
+      e.preventDefault();
+      drag = { h, x0: e.clientX, y0: e.clientY, s0: { ...s } };
+    };
+    window.onpointermove = e => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0, a = drag.s0, w = W(), hh = H(), MIN = 40;
+      if (!drag.h) { s.x = Math.min(Math.max(0, a.x + dx), w - a.w); s.y = Math.min(Math.max(0, a.y + dy), hh - a.h); return zeig(); }
+      const links = drag.h.includes("w"), oben = drag.h.includes("n");
+      let x1 = a.x, y1 = a.y, x2 = a.x + a.w, y2 = a.y + a.h;
+      if (links) x1 = Math.min(Math.max(0, a.x + dx), x2 - MIN); else x2 = Math.max(Math.min(w, a.x + a.w + dx), x1 + MIN);
+      if (oben) y1 = Math.min(Math.max(0, a.y + dy), y2 - MIN); else y2 = Math.max(Math.min(hh, a.y + a.h + dy), y1 + MIN);
+      if (r) { // Seitenverhältnis halten: Höhe folgt der Breite
+        let bw = x2 - x1, bh = bw / r;
+        const maxH = oben ? y2 : hh - y1;
+        if (bh > maxH) { bh = maxH; bw = bh * r; if (links) x1 = x2 - bw; else x2 = x1 + bw; }
+        if (oben) y1 = y2 - bh; else y2 = y1 + bh;
+      }
+      s = { x: x1, y: y1, w: x2 - x1, h: y2 - y1 }; zeig();
+    };
+    window.onpointerup = () => { drag = null; };
+    document.onkeydown = e => { if (e.key === "Escape") ende(null); };
+    $("#cropAbbr").onclick = () => ende(null);
+    $("#cropOk").onclick = () => {
+      const f = img.naturalWidth / W();
+      const sx = Math.round(s.x * f), sy = Math.round(s.y * f), sw = Math.round(s.w * f), sh = Math.round(s.h * f);
+      const c = document.createElement("canvas"); c.width = sw; c.height = sh;
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, sw, sh);
+      try { g.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh); c.toBlob(b => ende(b), "image/jpeg", 0.92); }
+      catch { toast("Dieses Foto lässt sich leider nicht zuschneiden."); ende(null); }
+    };
+  });
 }
 $$("nav button").forEach(b => b.onclick = () => tab(b.dataset.tab));
 
@@ -377,7 +515,7 @@ function renderNeu() {
           <span class="sp"></span>${a.status ? `<span class="chip acc">${a.status}</span>` : ""}
           ${ai > 0 && !a.status ? `<button class="btn s" data-merge="${ai}" title="Fotos zum Artikel darüber hinzufügen">↑ zusammenführen</button>` : ""}
           ${!a.status ? `<button class="btn s d" data-del="${ai}">Entfernen</button>` : ""}</div>
-        <div class="thumbs">${a.urls.map((u, fi) => `<div class="th ${fi === a.haupt ? "main" : ""}"><img src="${u}" loading="lazy"><button class="x" data-x="${ai}:${fi}">✕</button><button class="st" data-st="${ai}:${fi}">${fi === a.haupt ? "★ Titelbild" : "☆ Titelbild"}</button></div>`).join("")}</div>
+        <div class="thumbs">${a.urls.map((u, fi) => `<div class="th ${fi === a.haupt ? "main" : ""}"><img src="${u}" loading="lazy"><button class="x" data-x="${ai}:${fi}">✕</button>${a.status ? "" : `<button class="cr" data-cr="${ai}:${fi}" title="Zuschneiden">✂</button>`}<button class="st" data-st="${ai}:${fi}">${fi === a.haupt ? "★ Titelbild" : "☆ Titelbild"}</button></div>`).join("")}</div>
       </div>
       <div>
         <label class="f" style="margin-top:0">Hinweis für die KI (optional)</label>
@@ -410,6 +548,14 @@ $("#neuListe").addEventListener("click", e => {
   else if (t.dataset.merge) { const i = +t.dataset.merge, a = neue[i], b = neue[i - 1]; b.files.push(...a.files); b.urls.push(...a.urls); b.files = b.files.slice(0, 24); b.urls = b.urls.slice(0, 24); neue.splice(i, 1); renderNeu(); }
   else if (t.dataset.x) { const [ai, fi] = t.dataset.x.split(":").map(Number), a = neue[ai]; a.files.splice(fi, 1); a.urls.splice(fi, 1); if (a.haupt >= a.files.length) a.haupt = 0; if (!a.files.length) neue.splice(ai, 1); renderNeu(); }
   else if (t.dataset.st) { const [ai, fi] = t.dataset.st.split(":").map(Number); neue[ai].haupt = fi; renderNeu(); }
+  else if (t.dataset.cr) {
+    const [ai, fi] = t.dataset.cr.split(":").map(Number), a = neue[ai];
+    zuschneiden(a.urls[fi]).then(b => {
+      if (!b || !neue.includes(a)) return;
+      const f = new File([b], a.files[fi].name.replace(/\.[^.]+$/, "") + "-zuschnitt.jpg", { type: "image/jpeg" });
+      URL.revokeObjectURL(a.urls[fi]); a.files[fi] = f; a.urls[fi] = URL.createObjectURL(f); renderNeu();
+    });
+  }
   else if (t.closest(".seg") && t.dataset.v) { neue[+t.closest(".seg").dataset.seg].shopWunsch = t.dataset.v; renderNeu(); }
   else if (t.closest(".neu") && !t.closest("textarea,input,button")) { const i = +t.closest(".neu").dataset.i; if (!neue[i].status && (aktiv !== i || neuerFaellig)) { aktiv = i; neuerFaellig = false; renderNeu(); } }
 });
@@ -473,7 +619,19 @@ async function ladeDrafts() {
   clearTimeout(pollT);
   if (DRAFTS.some(d => ["neu", "analysiere", "einstellen"].includes(d.status))) pollT = setTimeout(ladeDrafts, 4000);
 }
-const bildUrl = (d, n) => `/api/drafts/${d.id}/bild/${n}?t=${KEY}`;
+const bildUrl = (d, n) => `/api/drafts/${d.id}/bild/${n}?t=${KEY}&v=${d.bildV || 0}`;
+async function entwurfsFotoZuschneiden(d, i) {
+  const b = await zuschneiden(`/api/drafts/${d.id}/bild/${i}?art=voll&t=${KEY}&v=${d.bildV || 0}`);
+  if (!b) return;
+  try {
+    const img = await ladeBild(b);
+    const [voll, ki] = await Promise.all([skaliere(img, 1600, 0.88), skaliere(img, 1092, 0.8)]);
+    await api(`/drafts/${d.id}/bild/${i}/ki`, { method: "PUT", body: ki, headers: { "content-type": "image/jpeg" } });
+    const r = await api(`/drafts/${d.id}/bild/${i}/voll?ersetzt=1`, { method: "PUT", body: voll, headers: { "content-type": "image/jpeg" } });
+    d.bildV = r.bildV; toast("Foto zugeschnitten ✓");
+    await ladeDrafts(); oeffneNeu(d.id);
+  } catch (e) { toast(e.message); }
+}
 function statusChip(d) {
   if (d.status === "analysiere") return `<span class="chip acc"><span class="spin"></span> KI arbeitet …</span>`;
   if (d.status === "neu") return `<span class="chip">wartet</span>`;
@@ -606,7 +764,7 @@ function oeffne(id) {
   w.innerHTML = `
   <div class="ed">
     <div>
-      <div class="bilder">${Array.from({ length: d.bilder }, (_, i) => `<img src="${bildUrl(d, i)}" loading="lazy">`).join("")}</div>
+      <div class="bilder">${Array.from({ length: d.bilder }, (_, i) => `<div class="bw" data-crop="${i}" title="Zum Zuschneiden anklicken"><img src="${bildUrl(d, i)}" loading="lazy"><span class="tip">✂ zuschneiden</span></div>`).join("")}</div>
       <div class="box info"><b>KI:</b> ${esc(d.ki?.artikel || "")}<br>Sicherheit: <b>${esc(d.ki?.sicherheit || "–")}</b>${d.ki?.hinweise ? `<br>${esc(d.ki.hinweise)}` : ""}</div>
       <label class="f">Deine Infos / Änderungswunsch</label>
       <textarea id="wunsch-${id}" rows="3" placeholder="z. B. original LEGO, vollständig, mit Motor, getestet – oder: schreib rein, dass …"></textarea>
@@ -691,6 +849,7 @@ function oeffne(id) {
     d._kandidaten = r;
   };
   $("button", ks).onclick = sucheKat; $("input", ks).onkeydown = e => { if (e.key === "Enter") sucheKat(); };
+  $(".bilder", w).onclick = e => { const b = e.target.closest("[data-crop]"); if (b) entwurfsFotoZuschneiden(d, +b.dataset.crop); };
   bindAktionen(w, d, speichern);
 }
 async function wechsleKategorie(d, kid) {
@@ -765,6 +924,281 @@ $("#aufraeumen").onclick = async () => {
   for (const d of l) await api(`/drafts/${d.id}`, { method: "DELETE" });
   ladeDrafts();
 };
+
+// ---------- Alte Angebote ----------
+const ALT = { shop: "wonderland", liste: null, stand: {}, zeigen: 40, offen: null, v: null, pollL: null, pollV: null, sortiert: [] };
+const tage = iso => iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 864e5)) : null;
+const ebayBild = u => `/api/alt-bild?u=${encodeURIComponent(u)}&t=${KEY}`;
+/** wie auf dem Server: Lagerplatz (#17) ans Ende, ganze Wörter kürzen */
+function titelMitLager(titel, tag) {
+  const t = [...String(titel || "").replace(/\s*#\S+\s*$/, "").trim()];
+  if (!tag) return t.slice(0, 80).join("");
+  const platz = 80 - [...tag].length - 1;
+  let w = t.join("").split(/\s+/);
+  while (w.length > 1 && [...w.join(" ")].length > platz) w.pop();
+  return [...w.join(" ")].slice(0, platz).join("") + " " + tag;
+}
+/** Grinch-Artikel hat Nicole schon selbst überarbeitet */
+const autoErledigt = i => /grinch/i.test(i.titel) ? "Grinch – schon gemacht" : "";
+
+async function ladeAlt(neuLaden) {
+  clearTimeout(ALT.pollL);
+  try {
+    if (neuLaden) await fetch("/api/alt-ki", { method: "POST", headers: { "x-key": KEY, "content-type": "application/json" }, body: JSON.stringify({ job: "liste", shop: ALT.shop }) });
+    const r = await api(`/alt/${ALT.shop}`);
+    ALT.liste = r.liste; ALT.stand = r.stand || {};
+    // noch nie geladen → automatisch starten
+    if (r.liste.status === "leer" && !neuLaden) return ladeAlt(true);
+  } catch (e) { $("#altListe").innerHTML = `<div class="box err">${esc(e.message)}</div>`; return; }
+  renderAlt();
+  if (ALT.liste.status === "laedt" || neuLaden) ALT.pollL = setTimeout(() => ladeAlt(), 3000);
+}
+function sortiereAlt() {
+  const L = ALT.liste?.items || [], mitT = !!ALT.liste?.traffic;
+  const q = $("#altSuche").value.trim().toLowerCase(), alle = $("#altErledigt").checked;
+  let l = L.filter(i => (!q || i.titel.toLowerCase().includes(q)) && (alle || (!ALT.stand[i.itemId] && !autoErledigt(i))));
+  const t = i => i.traffic || { impressionen: 0, aufrufe: 0, klickrate: 0 };
+  const alter = (a, b) => String(a.start).localeCompare(String(b.start));
+  const sort = $("#altSort").value;
+  if (sort === "wenig") l.sort((a, b) => mitT ? (t(a).aufrufe - t(b).aufrufe) || (t(a).impressionen - t(b).impressionen) || alter(a, b) : (a.beobachter - b.beobachter) || alter(a, b));
+  else if (sort === "klick") l.sort((a, b) => mitT ? (t(a).aufrufe - t(b).aufrufe) || (t(b).impressionen - t(a).impressionen) : alter(a, b));
+  else if (sort === "alt") l.sort(alter);
+  else l.sort((a, b) => b.preis - a.preis);
+  ALT.sortiert = l;
+  return l;
+}
+function renderAlt() {
+  const li = ALT.liste || {}, L = $("#altListe");
+  const hin = [li.fehler && "Fehler: " + li.fehler, li.hinweis].filter(Boolean);
+  $("#altHinweis").innerHTML = hin.map(esc).join("<br>"); $("#altHinweis").classList.toggle("hidden", !hin.length);
+  $("#altSort option[value=klick]").disabled = !li.traffic;
+  if (li.status === "laedt" && !li.items?.length) { L.innerHTML = `<div class="leer"><span class="spin"></span> Lade alle laufenden Angebote und ihre Zahlen … (dauert etwa eine Minute)</div>`; $("#altInfo").textContent = ""; return; }
+  const l = sortiereAlt(), erledigt = Object.values(ALT.stand).filter(s => s.status === "bearbeitet").length;
+  $("#altInfo").innerHTML = `${l.length} offen · ${erledigt} bearbeitet${li.geladen ? ` · Stand ${new Date(li.geladen).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}` : ""}${li.status === "laedt" ? ' · <span class="spin"></span> aktualisiert' : ""}`;
+  if (!l.length) { L.innerHTML = `<div class="leer">${li.items?.length ? "Alles erledigt – oder der Filter ist zu streng. 🎉" : "Keine Angebote gefunden."}</div>`; $("#altMehr").classList.add("hidden"); return; }
+  const offenBleibt = ALT.offen && L.querySelector(`[data-alt="${ALT.offen}"] .alted`);
+  L.innerHTML = l.slice(0, ALT.zeigen).map(i => {
+    const st = ALT.stand[i.itemId], auto = autoErledigt(i), tr = i.traffic, d = tage(i.start);
+    return `<div class="card ${ALT.offen === i.itemId ? "offen" : ""}" data-alt="${i.itemId}">
+      <div class="az" data-altopen="${i.itemId}">
+        <img src="${esc(i.bild)}" loading="lazy" alt="">
+        <div><div class="t">${esc(i.titel)}</div>
+          <div class="zahlen"><span><b>${euro(i.preis)}</b></span>
+            ${tr ? `<span><b>${tr.impressionen}</b> Impressionen</span><span><b>${tr.aufrufe}</b> Aufrufe</span>` : ""}
+            <span><b>${i.beobachter}</b> Beobachter</span>${d !== null ? `<span>seit <b>${d}</b> Tagen online</span>` : ""}</div></div>
+        <div>${st?.status === "bearbeitet" ? `<span class="chip ok">✓ bearbeitet</span>` : st?.status === "uebersprungen" ? `<span class="chip">übersprungen</span>` : auto ? `<span class="chip">${esc(auto)}</span>` : ""}</div>
+      </div>
+      <div class="altw"></div>
+    </div>`;
+  }).join("");
+  $("#altMehr").classList.toggle("hidden", l.length <= ALT.zeigen);
+  $("#altMehr").textContent = `Mehr anzeigen (${l.length - ALT.zeigen} weitere)`;
+  if (ALT.offen) {
+    const w = L.querySelector(`[data-alt="${ALT.offen}"] .altw`);
+    if (w && offenBleibt) w.replaceWith(offenBleibt.parentElement); else if (w) altOeffnen(ALT.offen);
+  }
+}
+$("#altShop").onclick = e => {
+  const v = e.target.dataset.v; if (!v || v === ALT.shop) return;
+  ALT.shop = v; ALT.offen = null; ALT.zeigen = 40; ALT.liste = null;
+  $$("#altShop button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  $("#altListe").innerHTML = ""; ladeAlt();
+};
+$("#altLaden").onclick = () => ladeAlt(true);
+["altSort", "altErledigt"].forEach(id => $("#" + id).onchange = () => { ALT.zeigen = 40; renderAlt(); });
+$("#altSuche").oninput = () => { ALT.zeigen = 40; renderAlt(); };
+$("#altMehr").onclick = () => { ALT.zeigen += 40; renderAlt(); };
+$("#altListe").addEventListener("click", e => {
+  const o = e.target.closest("[data-altopen]"); if (!o) return;
+  const id = o.dataset.altopen;
+  if (ALT.offen === id) { altSchliessen(); return; }
+  altSchliessen(); altOeffnen(id);
+});
+function altSchliessen() {
+  clearTimeout(ALT.pollV);
+  $$("#altListe .altw").forEach(x => x.innerHTML = ""); $$("#altListe .card.offen").forEach(x => x.classList.remove("offen"));
+  ALT.offen = null; ALT.v = null;
+}
+function kiStarten(itemId, wunsch = "") {
+  return fetch("/api/alt-ki", { method: "POST", headers: { "x-key": KEY, "content-type": "application/json" }, body: JSON.stringify({ job: "vorschlag", shop: ALT.shop, itemId, wunsch }) });
+}
+/** Vorschlag fürs nächste Angebot schon vorbereiten, damit es gleich bereitsteht */
+async function naechstenVorbereiten(id) {
+  const i = ALT.sortiert.findIndex(x => x.itemId === id), n = ALT.sortiert[i + 1];
+  if (!n) return;
+  try { const v = await api(`/alt/${ALT.shop}/item/${n.itemId}`); if (!v.status || v.status === "fehler") kiStarten(n.itemId); } catch {}
+}
+async function altOeffnen(id, kiNeu) {
+  ALT.offen = id; clearTimeout(ALT.pollV);
+  const card = $(`#altListe [data-alt="${id}"]`); if (!card) return;
+  card.classList.add("offen");
+  const w = $(".altw", card);
+  let v;
+  try { v = await api(`/alt/${ALT.shop}/item/${id}`); } catch (e) { w.innerHTML = `<div class="box err">${esc(e.message)}</div>`; return; }
+  if (ALT.offen !== id) return;
+  if (!v.status || kiNeu) { await kiStarten(id); v.status = "ki"; naechstenVorbereiten(id); }
+  if (v.status === "ki") {
+    w.innerHTML = `<div class="box info" style="margin-top:14px"><span class="spin"></span> Die KI überarbeitet Titel, Beschreibung und Preis … (ca. 30–60 Sekunden)</div>`;
+    ALT.pollV = setTimeout(() => ALT.offen === id && altOeffnen(id), 3500); return;
+  }
+  if (v.status === "fehler" && !v.neu) {
+    w.innerHTML = `<div class="box err" style="margin-top:14px">${esc(v.fehler)}</div><div class="aktionen"><button class="btn p" data-aa="neu">Noch mal versuchen</button></div>`;
+    $("[data-aa=neu]", w).onclick = () => altOeffnen(id, true); return;
+  }
+  ALT.v = v; altEditor(w, id, v);
+}
+function altEditor(w, id, v) {
+  const o = v.original, n = v.neu, item = (ALT.liste?.items || []).find(x => x.itemId === id) || {}, tr = item.traffic;
+  const zeigeFotos = () => {
+    $(".altfotos", w).innerHTML = n.bilder.map((u, i) => `<div class="af"><img src="${esc(u)}" loading="lazy" alt=""><div class="k">
+      <button data-f="crop" data-i="${i}" title="Zuschneiden">✂</button>${i ? `<button data-f="star" data-i="${i}" title="Als Titelbild">★</button>` : ""}${n.bilder.length > 1 ? `<button data-f="del" data-i="${i}" title="Foto entfernen">✕</button>` : ""}</div></div>`).join("");
+  };
+  w.innerHTML = `
+  <div class="ed alted">
+    <div>
+      <div class="altfotos"></div>
+      <div class="row" style="margin-top:8px"><label class="btn s" style="cursor:pointer">＋ Neues Titelbild<input type="file" accept="image/*" class="hidden" data-f="datei"></label><span class="small mut">Das erste Foto sieht man in der Suche.</span></div>
+      <div class="box info">${euro(o.preis)} · ${o.beobachter} Beobachter${tr ? ` · ${tr.impressionen} Impressionen · ${tr.aufrufe} Aufrufe (30 Tage)` : ""}${tage(o.start) !== null ? ` · seit ${tage(o.start)} Tagen online` : ""}<br><a href="${esc(o.url)}" target="_blank">Bei eBay ansehen ↗</a></div>
+      ${o.beobachter ? `<div class="card" style="margin-top:10px;padding:12px">
+        <b class="small">Preisvorschlag an ${o.beobachter} Beobachter</b>
+        <div class="row" style="margin-top:8px"><input type="number" min="5" max="80" value="10" data-f="prozent" style="width:80px"><span>% Rabatt</span><button class="btn s" data-f="angebot">Senden</button></div>
+        <div class="small mut" style="margin-top:4px">Gilt 2 Tage. Wer das Angebot beobachtet, bekommt eine Nachricht.</div></div>` : ""}
+      <label class="f">Infos für die KI</label>
+      <textarea data-f="wunsch" rows="3" placeholder="z. B. getestet, funktioniert · Preis nicht unter 20 € · Anleitung fehlt"></textarea>
+      <div class="row" style="margin-top:8px"><button class="btn s" data-f="neu">✎ Neu vorschlagen</button></div>
+    </div>
+    <div>
+      ${v.uebernommen ? `<div class="box ok" style="margin-top:0">Bei eBay übernommen ✓ (${new Date(v.uebernommen).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })})${v.warnungen?.length ? "<br>" + v.warnungen.map(esc).join("<br>") : ""}</div>` : ""}
+      ${v.fehler ? `<div class="box err" style="margin-top:0">${esc(v.fehler)}</div>` : ""}
+      ${v.ki?.aenderungen ? `<div class="box info" style="margin-top:0"><b>Vorschlag:</b> ${esc(v.ki.aenderungen)}</div>` : ""}
+      ${v.ki?.rueckfrage ? `<div class="box warn">💬 ${esc(v.ki.rueckfrage)}</div>` : ""}
+      <label class="f">Neuer Titel <span class="cnt" data-cnt></span></label>
+      <input type="text" data-k="titel" value="${esc(n.titel)}" maxlength="80">
+      <div class="alttitel" title="Bisheriger Titel">${esc(o.titel)}</div>
+      <div class="small mut" data-final style="margin-top:4px"></div>
+      <div class="grid2">
+        <div><label class="f">Preis (€) <span class="vorher" style="text-transform:none">· bisher ${euro(o.preis)}</span></label><input type="text" data-k="preis" value="${String(n.preis ?? "").replace(".", ",")}"></div>
+        <div></div>
+      </div>
+      ${v.ki?.preisBegruendung ? `<div class="small mut" style="margin-top:6px">💶 ${esc(v.ki.preisBegruendung)}</div>` : ""}
+      ${v.ki?.vergleich?.length ? `<details><summary>Vergleichsangebote bei eBay (${v.ki.vergleich.length})</summary><div class="verg">${v.ki.vergleich.map(x => `<div><b>${euro(x.gesamt)}</b> <span class="mut">(${euro(x.preis)} + ${euro(x.versand)})</span> · ${esc(x.zustand || "")} · ${esc(x.titel)}</div>`).join("")}</div></details>` : ""}
+      ${o.zustandId !== "1000" ? `<label class="f">Zustandsbeschreibung</label><textarea data-k="zustandText" rows="2">${esc(n.zustandText)}</textarea>` : ""}
+      <label class="f">Neue Beschreibung <a href="#" data-f="html" style="float:right;text-transform:none">HTML bearbeiten</a> <a href="#" data-f="altb" style="float:right;text-transform:none;margin-right:14px">Alte ansehen</a></label>
+      <iframe class="vs" sandbox data-vs="neu"></iframe>
+      <iframe class="vs hidden" sandbox data-vs="alt"></iframe>
+      <textarea data-k="beschreibung" class="hidden" rows="16" style="font-family:ui-monospace,Menlo,monospace;font-size:12px">${esc(n.beschreibung)}</textarea>
+      <div class="aktionen">
+        <button class="btn g" data-f="go">Bei eBay übernehmen</button>
+        <button class="btn" data-f="skip">Überspringen</button>
+        <span class="sp"></span>
+        <span class="small mut" data-msg></span>
+      </div>
+    </div>
+  </div>`;
+  zeigeFotos();
+  const vsNeu = $("[data-vs=neu]", w), vsAlt = $("[data-vs=alt]", w);
+  vsNeu.srcdoc = `<base target="_blank"><body style="margin:12px">${n.beschreibung || ""}`;
+  const titelInfo = () => {
+    const t = $("[data-k=titel]", w).value, c = $("[data-cnt]", w), k = [...t].length;
+    c.textContent = k + "/80"; c.classList.toggle("zu", k > 80);
+    const fin = titelMitLager(t, v.lager || "");
+    $("[data-final]", w).textContent = v.lager ? `Bei eBay mit Lagerplatz: ${fin}` : "";
+  };
+  titelInfo();
+  let tm = null;
+  const speichern = (sofort) => {
+    clearTimeout(tm);
+    const run = async () => {
+      const b = { bilder: n.bilder };
+      $$("[data-k]", w).forEach(el => b[el.dataset.k] = el.value);
+      const r = await api(`/alt/${ALT.shop}/item/${id}`, { method: "PUT", json: b });
+      Object.assign(n, r.neu); $("[data-msg]", w).textContent = "Gespeichert ✓";
+    };
+    if (sofort) return run();
+    tm = setTimeout(run, 700);
+  };
+  w.oninput = e => {
+    const k = e.target.dataset.k; if (!k) return;
+    if (k === "titel") titelInfo();
+    if (k === "beschreibung") vsNeu.srcdoc = `<base target="_blank"><body style="margin:12px">${e.target.value}`;
+    speichern();
+  };
+  const fotoHoch = async (blob) => {
+    const img = await ladeBild(blob), jpg = await skaliere(img, 1600, 0.9);
+    $("[data-msg]", w).innerHTML = `<span class="spin"></span> Foto wird zu eBay hochgeladen …`;
+    const r = await api(`/alt/${ALT.shop}/item/${id}/bild`, { method: "PUT", body: jpg, headers: { "content-type": "image/jpeg" } });
+    return r.url;
+  };
+  w.onchange = async e => {
+    if (e.target.dataset.f !== "datei" || !e.target.files[0]) return;
+    const f = e.target.files[0]; e.target.value = "";
+    const u = URL.createObjectURL(f);
+    try {
+      const b = (await zuschneiden(u)) || f;
+      n.bilder.unshift(await fotoHoch(b)); n.bilder = n.bilder.slice(0, 24);
+      zeigeFotos(); await speichern(true); toast("Neues Titelbild eingefügt – mit ★ kannst du die Reihenfolge ändern.");
+    } catch (err) { toast(err.message, 5000); $("[data-msg]", w).textContent = ""; }
+    finally { URL.revokeObjectURL(u); }
+  };
+  w.onclick = async e => {
+    const f = e.target.dataset.f; if (!f || f === "datei" || f === "prozent" || f === "wunsch") return;
+    if (e.target.tagName === "A") e.preventDefault();
+    const i = +e.target.dataset.i;
+    if (f === "html") { const ta = $("[data-k=beschreibung]", w); ta.classList.toggle("hidden"); vsNeu.classList.toggle("hidden", !ta.classList.contains("hidden")); vsAlt.classList.add("hidden"); return; }
+    if (f === "altb") { if (!vsAlt.srcdoc) vsAlt.srcdoc = `<base target="_blank"><body style="margin:12px">${o.beschreibung || ""}`; const zeigAlt = vsAlt.classList.contains("hidden"); vsAlt.classList.toggle("hidden", !zeigAlt); vsNeu.classList.toggle("hidden", zeigAlt); $("[data-k=beschreibung]", w).classList.add("hidden"); e.target.textContent = zeigAlt ? "Neue ansehen" : "Alte ansehen"; return; }
+    if (f === "star") { n.bilder.unshift(...n.bilder.splice(i, 1)); zeigeFotos(); return speichern(true); }
+    if (f === "del") { n.bilder.splice(i, 1); zeigeFotos(); return speichern(true); }
+    if (f === "crop") {
+      const b = await zuschneiden(ebayBild(n.bilder[i])); if (!b) return;
+      try { n.bilder[i] = await fotoHoch(b); zeigeFotos(); await speichern(true); toast("Foto zugeschnitten ✓"); }
+      catch (err) { toast(err.message, 5000); $("[data-msg]", w).textContent = ""; }
+      return;
+    }
+    if (f === "neu") {
+      const wunsch = $("[data-f=wunsch]", w).value.trim();
+      await speichern(true); await kiStarten(id, wunsch);
+      toast("Neuer Vorschlag wird erstellt …"); return altOeffnen(id);
+    }
+    if (f === "angebot") {
+      const p = Number($("[data-f=prozent]", w).value);
+      if (!confirm(`Allen ${o.beobachter} Beobachtern ${p} % Rabatt anbieten? (Gilt 2 Tage.)`)) return;
+      try { await api(`/alt/${ALT.shop}/item/${id}/angebot`, { method: "POST", json: { prozent: p, nachricht: "Hallo! Du beobachtest diesen Artikel – hier ein persönliches Angebot für dich. Viele Grüße, Nici" } }); toast("Preisvorschlag gesendet ✓"); }
+      catch (err) { toast(err.message, 6000); }
+      return;
+    }
+    if (f === "skip") {
+      await api(`/alt/${ALT.shop}/item/${id}/status`, { method: "POST", json: { status: "uebersprungen" } });
+      ALT.stand[id] = { status: "uebersprungen" }; return weiter(id);
+    }
+    if (f === "go") {
+      await speichern(true);
+      const aend = [];
+      if (titelMitLager(n.titel, v.lager || "") !== o.titel) aend.push("Titel");
+      if (n.beschreibung !== o.beschreibung) aend.push("Beschreibung");
+      if (Number(n.preis) !== Number(o.preis)) aend.push(`Preis ${euro(o.preis)} → ${euro(n.preis)}`);
+      if ((n.zustandText || "") !== (o.zustandText || "") && o.zustandId !== "1000") aend.push("Zustand");
+      if (n.bilder.join("|") !== o.bilder.join("|")) aend.push("Fotos");
+      if (!aend.length) return toast("Es gibt keine Änderungen zum Übernehmen.");
+      if (!confirm(`Bei eBay ändern: ${aend.join(", ")}?\n\nDas Angebot läuft einfach weiter – nichts wird beendet.`)) return;
+      const btn = e.target; btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Wird geändert …`;
+      const r = await api(`/alt/${ALT.shop}/item/${id}/uebernehmen`, { method: "POST", json: {}, roh: true });
+      btn.disabled = false; btn.textContent = "Bei eBay übernehmen";
+      if (!r.ok) { $("[data-msg]", w).innerHTML = ""; v.fehler = "eBay sagt: " + (r.data?.fehler || "Fehler"); return altEditor(w, id, v); }
+      const it = (ALT.liste?.items || []).find(x => x.itemId === id);
+      if (it) { it.titel = titelMitLager(n.titel, v.lager || ""); it.preis = Number(n.preis); if (n.bilder[0]) it.bild = n.bilder[0]; }
+      ALT.stand[id] = { status: "bearbeitet" };
+      toast(r.data?.warnungen?.length ? "Übernommen ✓ (mit Hinweisen von eBay)" : "Bei eBay übernommen ✓ – weiter zum nächsten");
+      return weiter(id);
+    }
+  };
+}
+/** nach Übernehmen/Überspringen gleich das nächste Angebot öffnen */
+function weiter(id) {
+  const vorher = ALT.sortiert.map(x => x.itemId), pos = vorher.indexOf(id);
+  altSchliessen(); renderAlt();
+  const naechst = ALT.sortiert.find((x, i) => i >= Math.max(0, pos) && x.itemId !== id);
+  if (naechst) { altOeffnen(naechst.itemId); $(`#altListe [data-alt="${naechst.itemId}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }
+}
 
 // ---------- Einstellungen ----------
 function renderEinst() {

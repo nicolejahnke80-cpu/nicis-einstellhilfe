@@ -77,6 +77,17 @@ ${vorlage}
 </vorlage>`;
 }
 
+const TITELREGELN = `- Titel: max. 80 Zeichen. Emoji-Regeln des Shops beibehalten (höchstens ein Emoji, ganz vorn). Die folgenden Titelregeln haben Vorrang vor dem Stil ihrer alten Titel:
+  - Aufbau: Marke → Serie/Modell → exakte Modell-, Set- oder Artikelnummer (wenn auf den Fotos lesbar oder im Hinweis genannt) → was es ist → Größe/Farbe/Plattform → Zustand und Extras (z. B. OVP, komplett, mit Anleitung, getestet – nur wenn belegt). Die Suchbegriffe, die ein Käufer eintippen würde, nach vorn.
+  - Videospiele: Spielname + Konsole ausgeschrieben + Kürzel (z. B. „Super Nintendo SNES“, „Nintendo 64 N64“) + PAL + Modul/Disc + OVP/komplett/Anleitung + Erscheinungsjahr, wenn bekannt.
+  - Sammelkarten: Name + Set + Kartennummer + Seltenheit + Sprache + Zustand (z. B. NM).
+  - LEGO: LEGO + Themenwelt + Setnummer + Setname + Vollständigkeit.
+  - Tupperware und Haushalt: Marke + Serienname (z. B. UltraPro, MicroFix, Eidgenossen, Reis-Meister) + Größe in L/ml + Art des Teils + Farbe.
+  - Telefone, Technik, Ersatzteile: Marke + exakte Modellbezeichnung (z. B. „Gigaset C430HX“, „Braun K3000 3210“) + was es ist + Zubehör/Zustand.
+  - Mängel im Titel konkret und kurz benennen, z. B. „ohne Anleitung“, „2 Figuren fehlen“, „Defekt“, „Akku schwach“. NIE „LESEN“, „!!!“, Fragezeichen oder andere unklare Warnungen – auch wenn alte Titel so etwas enthalten.
+  - Keine Füllwörter („für“, „super“, „toll“, „schön“), keine Wörter wie „TOP“, „L@@K“, keine Großbuchstaben-Orgien. Wörter nicht doppelt.
+  - Keinen Lagerplatz (#-Nummer) in den Titel schreiben – der wird automatisch angehängt.`;
+
 const ANGEBOT_TOOL: any = {
   name: "angebot_entwurf",
   description: "Gibt den fertigen Angebotsentwurf zurück.",
@@ -156,15 +167,7 @@ export async function analysiere(draft: any) {
 Grundregeln:
 - Alles auf Deutsch.
 - Wähle den passenden Shop anhand von „Was gehört hierher“ und ihrer Shop-Kategorien.
-- Titel: max. 80 Zeichen. Emoji-Regeln des Shops beibehalten (höchstens ein Emoji, ganz vorn). Die folgenden Titelregeln haben Vorrang vor dem Stil ihrer alten Titel:
-  - Aufbau: Marke → Serie/Modell → exakte Modell-, Set- oder Artikelnummer (wenn auf den Fotos lesbar oder im Hinweis genannt) → was es ist → Größe/Farbe/Plattform → Zustand und Extras (z. B. OVP, komplett, mit Anleitung, getestet – nur wenn belegt). Die Suchbegriffe, die ein Käufer eintippen würde, nach vorn.
-  - Videospiele: Spielname + Konsole ausgeschrieben + Kürzel (z. B. „Super Nintendo SNES“, „Nintendo 64 N64“) + PAL + Modul/Disc + OVP/komplett/Anleitung + Erscheinungsjahr, wenn bekannt.
-  - Sammelkarten: Name + Set + Kartennummer + Seltenheit + Sprache + Zustand (z. B. NM).
-  - LEGO: LEGO + Themenwelt + Setnummer + Setname + Vollständigkeit.
-  - Tupperware und Haushalt: Marke + Serienname (z. B. UltraPro, MicroFix, Eidgenossen, Reis-Meister) + Größe in L/ml + Art des Teils + Farbe.
-  - Telefone, Technik, Ersatzteile: Marke + exakte Modellbezeichnung (z. B. „Gigaset C430HX“, „Braun K3000 3210“) + was es ist + Zubehör/Zustand.
-  - Mängel im Titel konkret und kurz benennen, z. B. „ohne Anleitung“, „2 Figuren fehlen“, „Defekt“, „Akku schwach“. NIE „LESEN“, „!!!“, Fragezeichen oder andere unklare Warnungen – auch wenn alte Titel so etwas enthalten.
-  - Keine Füllwörter („für“, „super“, „toll“, „schön“), keine Wörter wie „TOP“, „L@@K“, keine Großbuchstaben-Orgien. Wörter nicht doppelt.
+${TITELREGELN}
 - Beschreibung: Übernimm die Vorlage des gewählten Shops 1:1 in Aufbau, HTML, CSS, Farben, Überschriften und festen Textbausteinen (z. B. Versand-, Rechts- oder Grußtexte). Ersetze nur die artikelbezogenen Inhalte. Kein JavaScript, keine externen Bilder einfügen.
 - Ehrlich bleiben: Nichts behaupten, was nicht auf den Fotos zu sehen ist oder im Hinweis von Nicole steht (z. B. „getestet“, „funktioniert“, „vollständig“). Sichtbare Mängel nennen.
 - Sie zahlt den Versand selbst (für Käufer versandkostenfrei) – das darf in Titel/Beschreibung nur stehen, wenn es in ihrer Vorlage so steht.
@@ -372,4 +375,113 @@ export function fehlendeAngaben(d: any, s: any) {
   if (!p.shipping || !p.payment || !p.return) f.push("Versand-/Zahlungs-/Rückgabe-Profil (Einstellungen)");
   if (!s.standort?.plz) f.push("Artikelstandort-PLZ (Einstellungen)");
   return f;
+}
+
+// ---------- Alte Angebote überarbeiten ----------
+const ALT_TOOL: any = {
+  name: "angebot_ueberarbeitet",
+  description: "Gibt das überarbeitete Angebot zurück.",
+  input_schema: {
+    type: "object",
+    properties: {
+      titel: { type: "string", description: "Neuer Titel nach den Titelregeln (max. 80 Zeichen, ohne #-Lagerplatz)." },
+      zustand_text: { type: "string", description: "Ehrliche Zustandsbeschreibung (max. 1000 Zeichen), aus dem alten Angebot übernommen und verbessert." },
+      beschreibung_html: { type: "string", description: "Komplette neue Beschreibung als HTML nach der Vorlage des Shops." },
+      preis: { type: "number", description: "Empfohlener neuer Sofort-Kaufen-Preis in Euro (darf gleich bleiben)." },
+      preis_begruendung: { type: "string", description: "1–2 Sätze, warum dieser Preis." },
+      aenderungen: { type: "string", description: "Stichpunktartig in einem Satz: was wurde geändert (z. B. „Modellnummer in den Titel, ‚LESEN‘ entfernt, Preis 5 € runter“)." },
+      rueckfrage: { type: "string", description: "Höchstens EINE kurze Rückfrage an Nicole (max. 15 Wörter), nur wenn für Käufer wirklich wichtig. Sonst leer." },
+    },
+    required: ["titel", "zustand_text", "beschreibung_html", "preis", "preis_begruendung", "aenderungen"],
+  },
+};
+
+/** HTML grob in Text umwandeln (für die KI) */
+function alsText(html: string) {
+  return String(html || "")
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<br\s*\/?>|<\/(p|div|li|h\d|tr)>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s*\n+/g, "\n")
+    .trim();
+}
+
+/** Suchbegriff aus einem alten Titel: Emojis, #-Lagerplatz und Warnwörter weg */
+export function suchbegriffAusTitel(t: string) {
+  return String(t || "")
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, " ")
+    .replace(/#\S+/g, " ")
+    .replace(/\b(LESEN|NEU|OVP|TOP|L@@K|geprüft|getestet)\b|!+|\?+/gi, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 7)
+    .join(" ");
+}
+
+export async function altVorschlag(shop: Shop, o: any, stats: any, wunsch: string) {
+  const s = await getSettings();
+  const daten: any = await getJSON(`shopdaten/${shop}`);
+  const cfg = s.shops[shop];
+  const vorlage = cfg.vorlageHtml?.trim() || daten?.beispiele?.[0]?.html || STANDARD_VORLAGE[shop];
+  const vergleich = await vergleichsAngebote(suchbegriffAusTitel(o.titel)).catch(() => [] as any[]);
+  const tageOnline = o.start ? Math.round((Date.now() - new Date(o.start).getTime()) / 864e5) : null;
+
+  const bilder = (o.bilder || []).slice(0, 4).map((u: string) => ({ type: "image", source: { type: "url", url: u } }));
+  const text = `Du bist die Einstellhilfe von Nicole, einer eBay-Händlerin aus Deutschland. Dieses Angebot läuft schon länger und verkauft sich nicht. Überarbeite es, damit es in der eBay-Suche öfter angeklickt wird – OHNE es neu einzustellen.
+
+Shop: ${cfg.name}
+Was gehört hierher: ${cfg.fokus}
+Stilregeln: ${cfg.stil}
+
+Regeln:
+- Alles auf Deutsch.
+${TITELREGELN}
+- Beschreibung: Übernimm die Vorlage des Shops 1:1 in Aufbau, HTML, CSS, Farben, Überschriften und festen Textbausteinen (z. B. Versand-, Rechts- oder Grußtexte, Hinweise). Fülle sie mit den Inhalten aus dem alten Angebot. Alle wichtigen Infos aus der alten Beschreibung behalten (Lieferumfang, Mängel, Funktion, Maße). Kein JavaScript, keine externen Bilder.
+- Ehrlich bleiben: Nichts behaupten, was nicht im alten Angebot steht, auf den Fotos zu sehen ist oder von Nicole kommt.
+- Preis: Nicole zahlt den Versand selbst. Vergleiche mit den GESAMTpreisen (Preis + Versand) wirklich vergleichbarer Angebote. Das Angebot ist schon ${tageOnline ?? "?"} Tage online${stats ? ` und hatte in den letzten 30 Tagen ${stats.impressionen} Impressionen und ${stats.aufrufe} Aufrufe` : ""}, ${o.beobachter} Beobachter. Wenn der Preis über vergleichbaren Angeboten liegt, moderat senken (auf ,99 / ,95 / ,00 enden). Wenn er schon passt, gleich lassen. Nicht verschenken.
+${wunsch ? `\nInfos / Wunsch von Nicole (hat Vorrang):\n${wunsch}\n` : ""}
+## Altes Angebot
+Titel: ${o.titel}
+Preis: ${o.preis} €
+Zustand: ${o.zustandName}${o.zustandText ? ` – ${o.zustandText}` : ""}
+eBay-Kategorie: ${o.kategorie?.name || "–"}
+Merkmale: ${JSON.stringify(o.merkmale || {})}
+Alte Beschreibung (als Text):
+${alsText(o.beschreibung).slice(0, 6000)}
+
+## Beschreibungsvorlage (HTML) des Shops
+<vorlage>
+${vorlage}
+</vorlage>
+
+## Aktuelle Vergleichsangebote auf eBay.de (Sofort-Kaufen)
+${vergleich.slice(0, 20).map((v: any) => `- ${v.gesamt.toFixed(2)} € gesamt (${v.preis.toFixed(2)} + ${v.versand.toFixed(2)} Versand) · ${v.zustand || "?"} · ${v.titel}`).join("\n") || "(keine gefunden)"}
+
+Antworte ausschließlich über das Werkzeug angebot_ueberarbeitet.`;
+
+  const client = claude();
+  const anfrage = (mitBildern: boolean) =>
+    client.messages.create({
+      model: MODELL(),
+      max_tokens: 10000,
+      tools: [ALT_TOOL],
+      tool_choice: { type: "auto" },
+      messages: [{ role: "user", content: [...(mitBildern ? bilder : []), { type: "text", text }] }],
+    });
+  // Falls eBay-Bilder nicht geladen werden können: ohne Bilder noch einmal
+  const m = await anfrage(true).catch(() => anfrage(false));
+  const a = toolInput(m, "angebot_ueberarbeitet");
+  return {
+    titel: String(a.titel || o.titel).replace(/\s*#\S+\s*$/, "").slice(0, 80),
+    zustandText: a.zustand_text ?? o.zustandText,
+    beschreibung: a.beschreibung_html || o.beschreibung,
+    preis: Number(a.preis) || o.preis,
+    preisBegruendung: a.preis_begruendung || "",
+    aenderungen: a.aenderungen || "",
+    rueckfrage: a.rueckfrage || "",
+    vergleich: vergleich.slice(0, 12),
+  };
 }

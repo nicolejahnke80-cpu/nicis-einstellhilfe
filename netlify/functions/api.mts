@@ -2,8 +2,12 @@ import type { Config, Context } from "@netlify/functions";
 import {
   SHOPS, checkAuth, db, draftKey, getDraft, getJSON, getSettings, imgKey, json, saveDraft, setJSON, sha, type Shop,
 } from "../shared/store.mts";
-import { consentUrl, exchangeCode, hasCreds, kategorieVorschlaege, merkmaleFuer, syncShop, zustaendeFuer } from "../shared/ebay.mts";
-import { einstellen } from "../shared/einstellen.mts";
+import {
+  angebotAendern, angebotAnBeobachter, bildHochladen, consentUrl, exchangeCode, hasCreds, hatTrafficRecht,
+  kategorieVorschlaege, merkmaleFuer, syncShop, zustaendeFuer,
+} from "../shared/ebay.mts";
+import { einstellen, titelMitLager } from "../shared/einstellen.mts";
+import { itemKey, listeKey, standKey } from "../shared/alt.mts";
 import { fehlendeAngaben } from "../shared/ki.mts";
 
 const isShop = (s: any): s is Shop => SHOPS.includes(s);
@@ -84,6 +88,7 @@ export default async (req: Request, context: Context) => {
         const [t, d]: any = await Promise.all([getJSON(`token/${s}`), getJSON(`shopdaten/${s}`)]);
         shops[s] = {
           verbunden: !!t?.refresh_token,
+          traffic: await hatTrafficRecht(s),
           ablauf: t?.refresh_expires || 0,
           daten: d
             ? { ...d, beispiele: (d.beispiele || []).map((b: any) => ({ ...b, html: undefined, hatHtml: !!b.html })) }
@@ -186,11 +191,21 @@ export default async (req: Request, context: Context) => {
         const buf = await req.arrayBuffer();
         if (buf.byteLength > 4_400_000) return json({ fehler: "Foto zu groß" }, 413);
         await db().set(imgKey(d.id, n, art), buf);
+        // Foto nachträglich geändert (z. B. zugeschnitten): bei eBay neu hochladen, Vorschau neu laden
+        if (url.searchParams.get("ersetzt") && art === "voll") {
+          if (Array.isArray(d.ebayBilder) && d.ebayBilder[n]) d.ebayBilder[n] = null;
+          d.geprueft = null;
+          d.bildV = Date.now();
+          await saveDraft(d);
+          return json({ ok: true, bildV: d.bildV });
+        }
         return json({ ok: true });
       }
-      // Foto ansehen: GET /drafts/:id/bild/:n?t=...
+      // Foto ansehen: GET /drafts/:id/bild/:n?t=...  (&art=voll für das große Foto, z. B. zum Zuschneiden)
       if (m === "GET" && seg[2] === "bild") {
-        const buf = await db().get(imgKey(d.id, Number(seg[3]), "ki"), { type: "arrayBuffer" });
+        const n = Number(seg[3]);
+        const gross = url.searchParams.get("art") === "voll" ? await db().get(imgKey(d.id, n, "voll"), { type: "arrayBuffer" }) : null;
+        const buf = gross || (await db().get(imgKey(d.id, n, "ki"), { type: "arrayBuffer" }));
         if (!buf) return new Response("", { status: 404 });
         return new Response(buf as ArrayBuffer, { headers: { "content-type": "image/jpeg", "cache-control": "private, max-age=86400" } });
       }
@@ -210,6 +225,100 @@ export default async (req: Request, context: Context) => {
       }
     }
 
+    // ---------- Alte Angebote bearbeiten ----------
+    // eBay-Foto durchreichen (zum Zuschneiden im Browser): GET /alt-bild?u=...
+    if (m === "GET" && path === "/alt-bild") {
+      const u = url.searchParams.get("u") || "";
+      let host = "";
+      try { host = new URL(u).hostname; } catch {}
+      if (!/(^|\.)ebayimg\.com$/.test(host)) return json({ fehler: "Nur eBay-Fotos" }, 400);
+      const r = await fetch(u);
+      if (!r.ok) return new Response("", { status: 404 });
+      return new Response(await r.arrayBuffer(), { headers: { "content-type": r.headers.get("content-type") || "image/jpeg", "cache-control": "private, max-age=3600" } });
+    }
+    if (seg[0] === "alt" && isShop(seg[1])) {
+      const shop = seg[1];
+      // Liste mit Bearbeitungsstand
+      if (m === "GET" && seg.length === 2) {
+        const [liste, stand]: any = await Promise.all([getJSON(listeKey(shop)), getJSON(standKey(shop))]);
+        return json({ liste: liste || { status: "leer", items: [] }, stand: stand || {} });
+      }
+      if (seg[2] === "item" && /^\d+$/.test(seg[3] || "")) {
+        const itemId = seg[3], key = itemKey(shop, itemId);
+        const v: any = (await getJSON(key)) || {};
+        if (m === "GET" && seg.length === 4) return json(v);
+        // eigene Änderungen speichern
+        if (m === "PUT" && seg.length === 4) {
+          const b = await req.json();
+          v.neu = { ...(v.neu || {}) };
+          for (const k of ["titel", "zustandText", "beschreibung"]) if (k in b) v.neu[k] = String(b[k] ?? "");
+          if ("preis" in b) v.neu.preis = Number(String(b.preis).replace(",", ".")) || 0;
+          if (Array.isArray(b.bilder)) v.neu.bilder = b.bilder.map(String).filter((x: string) => /^https:\/\//.test(x)).slice(0, 24);
+          await setJSON(key, v);
+          return json(v);
+        }
+        // neues / zugeschnittenes Foto zu eBay hochladen → Adresse zurück
+        if (m === "PUT" && seg[4] === "bild") {
+          const buf = await req.arrayBuffer();
+          if (buf.byteLength > 6_000_000) return json({ fehler: "Foto zu groß" }, 413);
+          const u = await bildHochladen(shop, buf, `${itemId}-${Date.now()}.jpg`);
+          return json({ url: u });
+        }
+        // bei eBay übernehmen – Angebot wird geändert, NICHT beendet
+        if (m === "POST" && seg[4] === "uebernehmen") {
+          if (!v.neu || !v.original) return json({ fehler: "Erst den Vorschlag laden." }, 400);
+          const o = v.original, n = v.neu;
+          const titel = titelMitLager(n.titel, v.lager || "");
+          const bilderNeu = (n.bilder || []).join("|") !== (o.bilder || []).join("|");
+          try {
+            const warnungen = await angebotAendern(shop, itemId, {
+              titel: titel !== o.titel ? titel : undefined,
+              beschreibung: n.beschreibung !== o.beschreibung ? n.beschreibung : undefined,
+              preis: Number(n.preis) !== Number(o.preis) ? Number(n.preis) : undefined,
+              zustandText: (n.zustandText || "") !== (o.zustandText || "") ? n.zustandText : undefined,
+              zustandId: o.zustandId,
+              bilder: bilderNeu ? n.bilder : undefined,
+            });
+            const stand: any = (await getJSON(standKey(shop))) || {};
+            stand[itemId] = { status: "bearbeitet", zeit: Date.now(), preisAlt: o.preis, preisNeu: Number(n.preis) };
+            await setJSON(standKey(shop), stand);
+            // Original auf den neuen Stand bringen, damit ein zweites Übernehmen nur echte Änderungen schickt
+            v.original = { ...o, titel, beschreibung: n.beschreibung, preis: Number(n.preis), zustandText: n.zustandText, bilder: n.bilder };
+            v.uebernommen = Date.now();
+            v.warnungen = warnungen;
+            await setJSON(key, v);
+            return json({ ok: true, warnungen });
+          } catch (e: any) {
+            return json({ fehler: e.message, details: e.details?.fehler || null }, 422);
+          }
+        }
+        // überspringen / wieder aufnehmen
+        if (m === "POST" && seg[4] === "status") {
+          const { status } = await req.json();
+          const stand: any = (await getJSON(standKey(shop))) || {};
+          if (status === "uebersprungen") stand[itemId] = { status, zeit: Date.now() };
+          else delete stand[itemId];
+          await setJSON(standKey(shop), stand);
+          return json({ ok: true });
+        }
+        // Preisvorschlag an alle Beobachter
+        if (m === "POST" && seg[4] === "angebot") {
+          const { prozent, nachricht } = await req.json();
+          const p = Number(prozent);
+          if (!(p >= 5 && p <= 80)) return json({ fehler: "Rabatt bitte zwischen 5 und 80 %." }, 400);
+          try {
+            await angebotAnBeobachter(shop, itemId, p, String(nachricht || ""));
+            const stand: any = (await getJSON(standKey(shop))) || {};
+            stand[itemId] = { ...(stand[itemId] || { status: "bearbeitet" }), angebot: { prozent: p, zeit: Date.now() } };
+            await setJSON(standKey(shop), stand);
+            return json({ ok: true });
+          } catch (e: any) {
+            return json({ fehler: e.message }, 422);
+          }
+        }
+      }
+    }
+
     return json({ fehler: "Nicht gefunden" }, 404);
   } catch (e: any) {
     console.error(e);
@@ -219,5 +328,5 @@ export default async (req: Request, context: Context) => {
 
 export const config: Config = {
   path: "/api/*",
-  excludedPath: ["/api/analyse"],
+  excludedPath: ["/api/analyse", "/api/alt-ki"],
 };

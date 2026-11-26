@@ -254,7 +254,14 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acc)
     <div class="row" style="margin-bottom:12px">
       <button class="btn p" id="altVorbereiten">✨ Nächste 10 vorbereiten</button>
       <button class="btn g" id="altAlleUeber">Abgehakte übernehmen</button>
+      <button class="btn" id="entBtn">🗑 Entsorgen-Liste</button>
       <span class="small mut">Die KI bereitet mehrere Angebote auf einmal vor. Titel und Preis direkt in der Liste prüfen, „✓ Passt“ klicken, am Ende alle Abgehakten übernehmen.</span>
+    </div>
+    <div id="entKarte" class="card hidden" style="margin-bottom:14px">
+      <div class="row"><h3 style="margin:0">Entsorgen-Liste</h3><span class="mut small" id="entInfo"></span><span class="sp"></span>
+        <button class="btn s" id="entDruck">🖨 Drucken</button><button class="btn s d" id="entLeeren">Liste löschen</button><button class="btn s" id="entZu">Schließen</button></div>
+      <div class="small mut" style="margin-top:4px">Alle Angebote, die du hier beendet hast – sortiert nach Lagerplatz. Ausdrucken, Sachen aussortieren, dann „Liste löschen“.</div>
+      <div id="entTabelle" style="margin-top:10px"></div>
     </div>
     <div id="altHinweis" class="box warn hidden" style="margin:0 0 12px"></div>
     <div class="dl" id="altListe"></div>
@@ -964,6 +971,7 @@ async function ladeAlt(neuLaden) {
   } catch (e) { $("#altListe").innerHTML = `<div class="box err">${esc(e.message)}</div>`; return; }
   renderAlt();
   ladeVorschlaege();
+  ladeEnt();
   if (ALT.liste.status === "laedt" || neuLaden) ALT.pollL = setTimeout(() => ladeAlt(), 3000);
 }
 /** Stand der KI-Vorschläge für die sichtbaren Angebote holen (und aktualisieren, solange die KI arbeitet) */
@@ -1285,13 +1293,46 @@ function altEditor(w, id, v) {
     }
   };
 }
+// ---------- Entsorgen-Liste ----------
+let ENT = [];
+const lagerNr = s => { const m = String(s || "").match(/\d+/); return m ? +m[0] : 1e9; };
+const entSortiert = () => [...ENT].sort((a, b) => (lagerNr(a.lager) - lagerNr(b.lager)) || String(a.lager).localeCompare(String(b.lager), "de", { numeric: true }) || a.titel.localeCompare(b.titel, "de"));
+const ohneLager = t => String(t || "").replace(/\s*#\S+\s*$/, "");
+async function ladeEnt() {
+  try { ENT = await api("/entsorgen"); } catch { return; }
+  $("#entBtn").textContent = ENT.length ? `🗑 Entsorgen-Liste (${ENT.length})` : "🗑 Entsorgen-Liste";
+  $("#entInfo").textContent = ENT.length ? `${ENT.length} Artikel` : "";
+  $("#entTabelle").innerHTML = ENT.length ? `<table class="mk" style="font-size:13.5px"><tr class="mut small"><td style="width:90px"><b>Lager</b></td><td><b>Artikel</b></td><td style="width:110px"><b>Shop</b></td><td style="width:90px"><b>Beendet</b></td></tr>${entSortiert().map(x => `<tr><td><b>${esc(x.lager || "–")}</b></td><td>${esc(ohneLager(x.titel))}</td><td class="mut">${SHOPNAME[x.shop] || ""}</td><td class="mut">${new Date(x.zeit).toLocaleDateString("de-DE")}</td></tr>`).join("")}</table>` : `<div class="leer" style="padding:20px">Die Liste ist leer.</div>`;
+}
+$("#entBtn").onclick = async () => { const k = $("#entKarte"); k.classList.toggle("hidden"); if (!k.classList.contains("hidden")) await ladeEnt(); };
+$("#entZu").onclick = () => $("#entKarte").classList.add("hidden");
+$("#entDruck").onclick = () => {
+  if (!ENT.length) return toast("Die Liste ist leer.");
+  const w = window.open("", "_blank");
+  if (!w) return toast("Bitte Pop-ups für die Einstellhilfe erlauben.");
+  w.document.write(`<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Entsorgen-Liste</title><style>
+    body{font-family:-apple-system,Helvetica,Arial,sans-serif;margin:24px;color:#111}h1{font-size:20px;margin:0 0 4px}p{margin:0 0 14px;color:#555;font-size:13px}
+    table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #ccc;vertical-align:top}th{border-bottom:2px solid #111}
+    td.c{width:26px}td.c span{display:inline-block;width:14px;height:14px;border:1.5px solid #111;border-radius:3px}td.l{width:70px;font-weight:700}
+  </style></head><body><h1>Entsorgen-Liste</h1><p>${ENT.length} Artikel · Stand ${new Date().toLocaleDateString("de-DE")} · sortiert nach Lagerplatz</p>
+  <table><tr><th></th><th>Lager</th><th>Artikel</th><th>Shop</th></tr>${entSortiert().map(x => `<tr><td class="c"><span></span></td><td class="l">${esc(x.lager || "–")}</td><td>${esc(ohneLager(x.titel))}</td><td>${SHOPNAME[x.shop] || ""}</td></tr>`).join("")}</table>
+  <script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+};
+$("#entLeeren").onclick = async () => {
+  if (!ENT.length) return toast("Die Liste ist schon leer.");
+  if (!confirm(`Entsorgen-Liste mit ${ENT.length} Artikeln komplett löschen?\n\nDas löscht nur diese Liste in der Einstellhilfe – bei eBay ändert sich nichts.`)) return;
+  await api("/entsorgen", { method: "DELETE" }); await ladeEnt(); toast("Liste gelöscht ✓");
+};
+
 /** Angebot bei eBay beenden – mit Sicherheitsabfrage */
 async function altBeenden(id, titel) {
   if (!confirm(`Dieses Angebot bei eBay beenden?\n\n${titel}\n\nEs verschwindet aus dem Shop, Beobachter werden entfernt. Bei eBay findest du es danach unter „Nicht verkauft“ und kannst es von dort wieder einstellen.`)) return false;
   const r = await api(`/alt/${ALT.shop}/item/${id}/beenden`, { method: "POST", json: {}, roh: true });
   if (!r.ok) { toast("eBay sagt: " + (r.data?.fehler || "Fehler"), 6000); return false; }
   ALT.stand[id] = { status: "beendet" };
-  toast("Angebot beendet ✓");
+  toast("Angebot beendet ✓ – steht jetzt auf der Entsorgen-Liste");
+  ladeEnt();
   return true;
 }
 /** nach Übernehmen/Überspringen gleich das nächste Angebot öffnen */

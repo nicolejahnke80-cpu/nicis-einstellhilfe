@@ -7,7 +7,7 @@ import {
   kategorieVorschlaege, merkmaleFuer, syncShop, zustaendeFuer,
 } from "../shared/ebay.mts";
 import { einstellen, titelMitLager } from "../shared/einstellen.mts";
-import { itemKey, listeKey, standKey } from "../shared/alt.mts";
+import { itemKey, lagerAus, listeKey, standKey } from "../shared/alt.mts";
 import { fehlendeAngaben } from "../shared/ki.mts";
 
 const isShop = (s: any): s is Shop => SHOPS.includes(s);
@@ -236,6 +236,11 @@ export default async (req: Request, context: Context) => {
       if (!r.ok) return new Response("", { status: 404 });
       return new Response(await r.arrayBuffer(), { headers: { "content-type": r.headers.get("content-type") || "image/jpeg", "cache-control": "private, max-age=3600" } });
     }
+    // Entsorgen-Liste (beendete Angebote, beide Shops)
+    if (path === "/entsorgen") {
+      if (m === "GET") return json((await getJSON("entsorgen")) || []);
+      if (m === "DELETE") { await setJSON("entsorgen", []); return json({ ok: true }); }
+    }
     if (seg[0] === "alt" && isShop(seg[1])) {
       const shop = seg[1];
       // Liste mit Bearbeitungsstand
@@ -323,6 +328,14 @@ export default async (req: Request, context: Context) => {
           const stand: any = (await getJSON(standKey(shop))) || {};
           stand[itemId] = { status: "beendet", zeit: Date.now() };
           await setJSON(standKey(shop), stand);
+          // für die Entsorgen-Liste merken (zum Ausdrucken, mit Lagerplatz)
+          const liste: any = await getJSON(listeKey(shop));
+          const it = liste?.items?.find((x: any) => x.itemId === itemId) || {};
+          const ent: any[] = (await getJSON("entsorgen")) || [];
+          if (!ent.some((x) => x.itemId === itemId)) {
+            ent.push({ shop, itemId, titel: it.titel || "", lager: lagerAus(it.titel || "", it.sku || ""), preis: it.preis || 0, bild: it.bild || "", zeit: Date.now() });
+            await setJSON("entsorgen", ent);
+          }
           return json({ ok: true });
         }
         // überspringen / wieder aufnehmen

@@ -510,6 +510,11 @@ export async function angebotAendern(
   return warnungen.map((w: any) => w.text);
 }
 
+/** Angebot beenden (bei eBay danach unter „Nicht verkauft“, kann wieder eingestellt werden) */
+export async function angebotBeenden(shop: Shop, itemId: string) {
+  await trading(shop, "EndFixedPriceItem", `<ItemID>${esc(itemId)}</ItemID><EndingReason>NotAvailable</EndingReason>`);
+}
+
 /** Preisvorschlag an alle Beobachter senden */
 export async function angebotAnBeobachter(shop: Shop, itemId: string, prozent: number, nachricht: string) {
   const token = await userToken(shop);

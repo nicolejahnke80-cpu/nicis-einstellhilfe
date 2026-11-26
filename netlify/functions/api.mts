@@ -3,7 +3,7 @@ import {
   SHOPS, checkAuth, db, draftKey, getDraft, getJSON, getSettings, imgKey, json, saveDraft, setJSON, sha, type Shop,
 } from "../shared/store.mts";
 import {
-  angebotAendern, angebotAnBeobachter, bildHochladen, consentUrl, exchangeCode, hasCreds, hatTrafficRecht,
+  angebotAendern, angebotAnBeobachter, angebotBeenden, bildHochladen, consentUrl, exchangeCode, hasCreds, hatTrafficRecht,
   kategorieVorschlaege, merkmaleFuer, syncShop, zustaendeFuer,
 } from "../shared/ebay.mts";
 import { einstellen, titelMitLager } from "../shared/einstellen.mts";
@@ -312,6 +312,18 @@ export default async (req: Request, context: Context) => {
             await setJSON(key, v);
             return json({ fehler: e.message, details: e.details?.fehler || null }, 422);
           }
+        }
+        // Angebot bei eBay beenden
+        if (m === "POST" && seg[4] === "beenden") {
+          try {
+            await angebotBeenden(shop, itemId);
+          } catch (e: any) {
+            return json({ fehler: e.message }, 422);
+          }
+          const stand: any = (await getJSON(standKey(shop))) || {};
+          stand[itemId] = { status: "beendet", zeit: Date.now() };
+          await setJSON(standKey(shop), stand);
+          return json({ ok: true });
         }
         // überspringen / wieder aufnehmen
         if (m === "POST" && seg[4] === "status") {

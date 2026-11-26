@@ -35,3 +35,4 @@ Mac-Web-App: Fotos rein → KI (Claude über Netlify AI Gateway oder eigener ANT
   - Daten: `alt/{shop}/liste`, `alt/{shop}/stand`, `alt/{shop}/item/{id}`.
 - **eBay-Berechtigung**: neuer Scope `sell.analytics.readonly`. Token speichert jetzt seine Scopes; alte Tokens werden weiter mit den alten Scopes erneuert. Für Traffic-Zahlen beide Shops einmal „Neu verbinden“.
 - **Mehrere alte Angebote auf einmal** (26.11.2026): „✨ Nächste 10 vorbereiten“ startet die KI für die nächsten 10 offenen Angebote (gestaffelt). In der Liste erscheinen neuer Titel und Preis direkt zum Ändern, „✓ Passt“ hakt ab, „Abgehakte übernehmen“ ändert alle nacheinander bei eBay. Endpunkt `GET /api/alt/:shop/vorschlaege?ids=…` (Kurzfassung), Feld `abgehakt` im Vorschlag.
+- **Angebot beenden** (26.11.2026): Knopf „Beenden“ in jeder Zeile und „Angebot beenden“ in den Details (EndFixedPriceItem, Grund NotAvailable), mit Sicherheitsabfrage. Stand `beendet`.

@@ -148,6 +148,12 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acc)
 .altfotos .af:first-child:after{content:"Titelbild";position:absolute;left:6px;bottom:6px;background:var(--acc);color:#fff;font-size:11px;border-radius:6px;padding:1px 7px}
 .alttitel{font-size:12.5px;color:var(--mut);margin-top:4px;text-decoration:line-through;text-decoration-color:#c9bfb5}
 .vorher{font-size:12.5px;color:var(--mut)}
+.altkurz{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:10px 14px;align-items:center}
+.altkurz .zeile{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.altkurz input[data-kt]{font-weight:600}
+.altkurz input[data-kp]{width:90px}
+.altkurz .knoepfe{display:flex;gap:8px;grid-row:span 2}
+.card.passt{border-color:var(--ok);box-shadow:0 0 0 2px var(--okbg)}
 
 /* Login */
 #login{max-width:400px;margin:12vh auto}
@@ -244,6 +250,11 @@ details summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--acc)
       <input type="search" id="altSuche" placeholder="Im Titel suchen …" style="width:220px">
       <label class="row small" style="gap:6px"><input type="checkbox" id="altErledigt"> Erledigte zeigen</label>
       <span class="sp"></span><span class="mut" id="altInfo"></span>
+    </div>
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn p" id="altVorbereiten">✨ Nächste 10 vorbereiten</button>
+      <button class="btn g" id="altAlleUeber">Abgehakte übernehmen</button>
+      <span class="small mut">Die KI bereitet mehrere Angebote auf einmal vor. Titel und Preis direkt in der Liste prüfen, „✓ Passt“ klicken, am Ende alle Abgehakten übernehmen.</span>
     </div>
     <div id="altHinweis" class="box warn hidden" style="margin:0 0 12px"></div>
     <div class="dl" id="altListe"></div>
@@ -926,7 +937,8 @@ $("#aufraeumen").onclick = async () => {
 };
 
 // ---------- Alte Angebote ----------
-const ALT = { shop: "wonderland", liste: null, stand: {}, zeigen: 40, offen: null, v: null, pollL: null, pollV: null, sortiert: [] };
+const GESTARTET = new Set();
+const ALT = { shop: "wonderland", liste: null, stand: {}, zeigen: 40, offen: null, v: null, pollL: null, pollV: null, sortiert: [], vs: {}, pollS: null };
 const tage = iso => iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 864e5)) : null;
 const ebayBild = u => `/api/alt-bild?u=${encodeURIComponent(u)}&t=${KEY}`;
 /** wie auf dem Server: Lagerplatz (#17) ans Ende, ganze Wörter kürzen */
@@ -951,8 +963,69 @@ async function ladeAlt(neuLaden) {
     if (r.liste.status === "leer" && !neuLaden) return ladeAlt(true);
   } catch (e) { $("#altListe").innerHTML = `<div class="box err">${esc(e.message)}</div>`; return; }
   renderAlt();
+  ladeVorschlaege();
   if (ALT.liste.status === "laedt" || neuLaden) ALT.pollL = setTimeout(() => ladeAlt(), 3000);
 }
+/** Stand der KI-Vorschläge für die sichtbaren Angebote holen (und aktualisieren, solange die KI arbeitet) */
+async function ladeVorschlaege() {
+  clearTimeout(ALT.pollS);
+  const ids = ALT.sortiert.slice(0, ALT.zeigen).map(i => i.itemId);
+  if (!ids.length) return;
+  try {
+    const shop = ALT.shop, r = await api(`/alt/${shop}/vorschlaege?ids=${ids.join(",")}`);
+    if (shop !== ALT.shop) return;
+    for (const id of ids) { if (r[id]) ALT.vs[id] = r[id]; else delete ALT.vs[id]; }
+  } catch { return; }
+  const tippt = document.activeElement?.closest?.("#altListe") && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if (!tippt) renderAlt();
+  if (Object.values(ALT.vs).some(s => s.status === "ki")) ALT.pollS = setTimeout(ladeVorschlaege, 4000);
+}
+$("#altVorbereiten").onclick = async () => {
+  const offen = ALT.sortiert.filter(i => !ALT.stand[i.itemId] && !autoErledigt(i) && !["ki", "fertig"].includes(ALT.vs[i.itemId]?.status) && !GESTARTET.has(ALT.shop + i.itemId)).slice(0, 10);
+  if (!offen.length) return toast("Für die angezeigten Angebote gibt es schon Vorschläge.");
+  const b = $("#altVorbereiten"); b.disabled = true;
+  for (const [k, i] of offen.entries()) {
+    b.textContent = `Starte … ${k + 1}/${offen.length}`;
+    await kiStarten(i.itemId);
+    ALT.vs[i.itemId] = { status: "ki" };
+    await new Promise(ok => setTimeout(ok, 700)); // nicht alle auf einmal an die KI schicken
+  }
+  b.disabled = false; b.textContent = "✨ Nächste 10 vorbereiten";
+  toast(`${offen.length} Angebote werden vorbereitet – das dauert ein paar Minuten. Du kannst schon die ersten prüfen.`, 4500);
+  renderAlt(); ladeVorschlaege();
+};
+const kTimer = {};
+$("#altListe").addEventListener("input", e => {
+  const id = e.target.dataset.kt || e.target.dataset.kp; if (!id) return;
+  if (e.target.dataset.kt) { const c = $("[data-kc]", e.target.closest(".altkurz")); c.textContent = [...e.target.value].length + "/80"; }
+  const feld = e.target.dataset.kt ? "titel" : "preis";
+  clearTimeout(kTimer[id + feld]);
+  kTimer[id + feld] = setTimeout(async () => {
+    await api(`/alt/${ALT.shop}/item/${id}`, { method: "PUT", json: { [feld]: e.target.value } });
+    if (ALT.vs[id]) ALT.vs[id][feld] = feld === "preis" ? Number(e.target.value.replace(",", ".")) : e.target.value;
+  }, 500);
+});
+$("#altListe").addEventListener("click", async e => {
+  const id = e.target.dataset.kpasst; if (!id) return;
+  const s = ALT.vs[id]; if (!s) return;
+  s.abgehakt = !s.abgehakt;
+  await api(`/alt/${ALT.shop}/item/${id}`, { method: "PUT", json: { abgehakt: s.abgehakt } });
+  renderAlt();
+});
+$("#altAlleUeber").onclick = async () => {
+  const liste = Object.entries(ALT.vs).filter(([id, s]) => s.abgehakt && s.status === "fertig" && !ALT.stand[id]).map(([id]) => id);
+  if (!liste.length) return toast("Noch nichts abgehakt – bei jedem Vorschlag, der passt, auf „✓ Passt“ klicken.");
+  if (!confirm(`${liste.length} Angebote jetzt bei eBay ändern?\n\nDie Angebote laufen einfach weiter – nichts wird beendet.`)) return;
+  const b = $("#altAlleUeber"); b.disabled = true; let ok = 0, err = 0;
+  for (const id of liste) {
+    b.textContent = `Übernehme … ${ok + err + 1}/${liste.length}`;
+    const r = await api(`/alt/${ALT.shop}/item/${id}/uebernehmen`, { method: "POST", json: {}, roh: true }).catch(() => ({ ok: false }));
+    if (r.ok) { ok++; ALT.stand[id] = { status: "bearbeitet" }; } else err++;
+  }
+  b.disabled = false;
+  toast(`${ok} Angebote geändert${err ? `, ${err} mit Fehler (rot markiert)` : ""} ✓`, 5000);
+  ladeAlt();
+};
 function sortiereAlt() {
   const L = ALT.liste?.items || [], mitT = !!ALT.liste?.traffic;
   const q = $("#altSuche").value.trim().toLowerCase(), alle = $("#altErledigt").checked;
@@ -978,19 +1051,31 @@ function renderAlt() {
   if (!l.length) { L.innerHTML = `<div class="leer">${li.items?.length ? "Alles erledigt – oder der Filter ist zu streng. 🎉" : "Keine Angebote gefunden."}</div>`; $("#altMehr").classList.add("hidden"); return; }
   const offenBleibt = ALT.offen && L.querySelector(`[data-alt="${ALT.offen}"] .alted`);
   L.innerHTML = l.slice(0, ALT.zeigen).map(i => {
-    const st = ALT.stand[i.itemId], auto = autoErledigt(i), tr = i.traffic, d = tage(i.start);
-    return `<div class="card ${ALT.offen === i.itemId ? "offen" : ""}" data-alt="${i.itemId}">
+    const st = ALT.stand[i.itemId], auto = autoErledigt(i), tr = i.traffic, d = tage(i.start), s = ALT.vs[i.itemId];
+    const chip = st?.status === "bearbeitet" ? `<span class="chip ok">✓ bearbeitet</span>` : st?.status === "uebersprungen" ? `<span class="chip">übersprungen</span>` : auto ? `<span class="chip">${esc(auto)}</span>`
+      : s?.status === "ki" ? `<span class="chip acc"><span class="spin"></span> KI arbeitet …</span>` : s?.fehler ? `<span class="chip err">Fehler</span>` : s?.status === "fertig" ? `<span class="chip ok">Vorschlag bereit</span>` : "";
+    const kurz = s?.status === "fertig" && !st && ALT.offen !== i.itemId;
+    return `<div class="card ${ALT.offen === i.itemId ? "offen" : ""} ${kurz && s.abgehakt ? "passt" : ""}" data-alt="${i.itemId}">
       <div class="az" data-altopen="${i.itemId}">
         <img src="${esc(i.bild)}" loading="lazy" alt="">
-        <div><div class="t">${esc(i.titel)}</div>
+        <div><div class="t" ${kurz ? 'style="text-decoration:line-through;text-decoration-color:#c9bfb5;color:var(--mut);font-weight:500"' : ""}>${esc(i.titel)}</div>
           <div class="zahlen"><span><b>${euro(i.preis)}</b></span>
             ${tr ? `<span><b>${tr.impressionen}</b> Impressionen</span><span><b>${tr.aufrufe}</b> Aufrufe</span>` : ""}
             <span><b>${i.beobachter}</b> Beobachter</span>${d !== null ? `<span>seit <b>${d}</b> Tagen online</span>` : ""}</div></div>
-        <div>${st?.status === "bearbeitet" ? `<span class="chip ok">✓ bearbeitet</span>` : st?.status === "uebersprungen" ? `<span class="chip">übersprungen</span>` : auto ? `<span class="chip">${esc(auto)}</span>` : ""}</div>
+        <div>${chip}</div>
       </div>
+      ${kurz ? `<div class="altkurz">
+        <div class="zeile"><input type="text" data-kt="${i.itemId}" value="${esc(s.titel)}" maxlength="80" style="flex:1"><span class="small mut" data-kc>${[...s.titel].length}/80</span></div>
+        <div class="knoepfe"><button class="btn ${s.abgehakt ? "g" : ""}" data-kpasst="${i.itemId}">${s.abgehakt ? "✓ Abgehakt" : "✓ Passt"}</button><button class="btn s" data-altopen="${i.itemId}">Details ▾</button></div>
+        <div class="zeile"><input type="text" data-kp="${i.itemId}" value="${String(s.preis ?? "").replace(".", ",")}"><span>€</span><span class="small mut">bisher ${euro(s.preisAlt)}${s.aenderungen ? " · " + esc(s.aenderungen) : ""}</span></div>
+        ${s.rueckfrage ? `<div class="small" style="grid-column:1/-1;color:#4b2766">💬 ${esc(s.rueckfrage)}</div>` : ""}
+        ${s.fehler ? `<div class="box err" style="grid-column:1/-1;margin:0">${esc(s.fehler)}</div>` : ""}
+      </div>` : ""}
       <div class="altw"></div>
     </div>`;
   }).join("");
+  const n = Object.entries(ALT.vs).filter(([id, s]) => s.abgehakt && s.status === "fertig" && !ALT.stand[id]).length;
+  $("#altAlleUeber").textContent = n ? `Abgehakte übernehmen (${n})` : "Abgehakte übernehmen";
   $("#altMehr").classList.toggle("hidden", l.length <= ALT.zeigen);
   $("#altMehr").textContent = `Mehr anzeigen (${l.length - ALT.zeigen} weitere)`;
   if (ALT.offen) {
@@ -1000,18 +1085,19 @@ function renderAlt() {
 }
 $("#altShop").onclick = e => {
   const v = e.target.dataset.v; if (!v || v === ALT.shop) return;
-  ALT.shop = v; ALT.offen = null; ALT.zeigen = 40; ALT.liste = null;
+  ALT.shop = v; ALT.offen = null; ALT.zeigen = 40; ALT.liste = null; ALT.vs = {}; clearTimeout(ALT.pollS);
   $$("#altShop button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
   $("#altListe").innerHTML = ""; ladeAlt();
 };
 $("#altLaden").onclick = () => ladeAlt(true);
-["altSort", "altErledigt"].forEach(id => $("#" + id).onchange = () => { ALT.zeigen = 40; renderAlt(); });
-$("#altSuche").oninput = () => { ALT.zeigen = 40; renderAlt(); };
-$("#altMehr").onclick = () => { ALT.zeigen += 40; renderAlt(); };
+["altSort", "altErledigt"].forEach(id => $("#" + id).onchange = () => { ALT.zeigen = 40; renderAlt(); ladeVorschlaege(); });
+let sT = null;
+$("#altSuche").oninput = () => { ALT.zeigen = 40; renderAlt(); clearTimeout(sT); sT = setTimeout(ladeVorschlaege, 400); };
+$("#altMehr").onclick = () => { ALT.zeigen += 40; renderAlt(); ladeVorschlaege(); };
 $("#altListe").addEventListener("click", e => {
   const o = e.target.closest("[data-altopen]"); if (!o) return;
   const id = o.dataset.altopen;
-  if (ALT.offen === id) { altSchliessen(); return; }
+  if (ALT.offen === id) { altSchliessen(); ladeVorschlaege(); return; }
   altSchliessen(); altOeffnen(id);
 });
 function altSchliessen() {
@@ -1020,12 +1106,14 @@ function altSchliessen() {
   ALT.offen = null; ALT.v = null;
 }
 function kiStarten(itemId, wunsch = "") {
+  GESTARTET.add(ALT.shop + itemId);
   return fetch("/api/alt-ki", { method: "POST", headers: { "x-key": KEY, "content-type": "application/json" }, body: JSON.stringify({ job: "vorschlag", shop: ALT.shop, itemId, wunsch }) });
 }
 /** Vorschlag fürs nächste Angebot schon vorbereiten, damit es gleich bereitsteht */
 async function naechstenVorbereiten(id) {
   const i = ALT.sortiert.findIndex(x => x.itemId === id), n = ALT.sortiert[i + 1];
   if (!n) return;
+  if (GESTARTET.has(ALT.shop + n.itemId)) return;
   try { const v = await api(`/alt/${ALT.shop}/item/${n.itemId}`); if (!v.status || v.status === "fehler") kiStarten(n.itemId); } catch {}
 }
 async function altOeffnen(id, kiNeu) {
@@ -1036,7 +1124,8 @@ async function altOeffnen(id, kiNeu) {
   let v;
   try { v = await api(`/alt/${ALT.shop}/item/${id}`); } catch (e) { w.innerHTML = `<div class="box err">${esc(e.message)}</div>`; return; }
   if (ALT.offen !== id) return;
-  if (!v.status || kiNeu) { await kiStarten(id); v.status = "ki"; naechstenVorbereiten(id); }
+  if ((!v.status && !GESTARTET.has(ALT.shop + id)) || kiNeu) { await kiStarten(id); naechstenVorbereiten(id); }
+  if (!v.status) v.status = "ki";
   if (v.status === "ki") {
     w.innerHTML = `<div class="box info" style="margin-top:14px"><span class="spin"></span> Die KI überarbeitet Titel, Beschreibung und Preis … (ca. 30–60 Sekunden)</div>`;
     ALT.pollV = setTimeout(() => ALT.offen === id && altOeffnen(id), 3500); return;
@@ -1195,7 +1284,7 @@ function altEditor(w, id, v) {
 /** nach Übernehmen/Überspringen gleich das nächste Angebot öffnen */
 function weiter(id) {
   const vorher = ALT.sortiert.map(x => x.itemId), pos = vorher.indexOf(id);
-  altSchliessen(); renderAlt();
+  altSchliessen(); renderAlt(); ladeVorschlaege();
   const naechst = ALT.sortiert.find((x, i) => i >= Math.max(0, pos) && x.itemId !== id);
   if (naechst) { altOeffnen(naechst.itemId); $(`#altListe [data-alt="${naechst.itemId}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }
 }

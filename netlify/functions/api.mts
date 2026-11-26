@@ -243,6 +243,21 @@ export default async (req: Request, context: Context) => {
         const [liste, stand]: any = await Promise.all([getJSON(listeKey(shop)), getJSON(standKey(shop))]);
         return json({ liste: liste || { status: "leer", items: [] }, stand: stand || {} });
       }
+      // Kurzfassung der Vorschläge für mehrere Angebote: GET /alt/:shop/vorschlaege?ids=1,2,3
+      if (m === "GET" && seg[2] === "vorschlaege") {
+        const ids = (url.searchParams.get("ids") || "").split(",").filter((x) => /^\d+$/.test(x)).slice(0, 80);
+        const out: any = {};
+        await Promise.all(ids.map(async (id) => {
+          const v: any = await getJSON(itemKey(shop, id));
+          if (!v?.status) return;
+          out[id] = {
+            status: v.status, fehler: v.fehler || "", abgehakt: !!v.abgehakt, uebernommen: v.uebernommen || 0,
+            titel: v.neu?.titel || "", preis: v.neu?.preis ?? null, preisAlt: v.original?.preis ?? null,
+            lager: v.lager || "", aenderungen: v.ki?.aenderungen || "", rueckfrage: v.ki?.rueckfrage || "",
+          };
+        }));
+        return json(out);
+      }
       if (seg[2] === "item" && /^\d+$/.test(seg[3] || "")) {
         const itemId = seg[3], key = itemKey(shop, itemId);
         const v: any = (await getJSON(key)) || {};
@@ -254,6 +269,7 @@ export default async (req: Request, context: Context) => {
           for (const k of ["titel", "zustandText", "beschreibung"]) if (k in b) v.neu[k] = String(b[k] ?? "");
           if ("preis" in b) v.neu.preis = Number(String(b.preis).replace(",", ".")) || 0;
           if (Array.isArray(b.bilder)) v.neu.bilder = b.bilder.map(String).filter((x: string) => /^https:\/\//.test(x)).slice(0, 24);
+          if ("abgehakt" in b) v.abgehakt = !!b.abgehakt;
           await setJSON(key, v);
           return json(v);
         }
@@ -285,10 +301,15 @@ export default async (req: Request, context: Context) => {
             // Original auf den neuen Stand bringen, damit ein zweites Übernehmen nur echte Änderungen schickt
             v.original = { ...o, titel, beschreibung: n.beschreibung, preis: Number(n.preis), zustandText: n.zustandText, bilder: n.bilder };
             v.uebernommen = Date.now();
+            v.abgehakt = false;
+            v.fehler = "";
             v.warnungen = warnungen;
             await setJSON(key, v);
             return json({ ok: true, warnungen });
           } catch (e: any) {
+            v.fehler = `eBay sagt: ${e.message}`;
+            v.abgehakt = false;
+            await setJSON(key, v);
             return json({ fehler: e.message, details: e.details?.fehler || null }, 422);
           }
         }

@@ -279,6 +279,8 @@ export default async (req: Request, context: Context) => {
           if ("preis" in b) v.neu.preis = Number(String(b.preis).replace(",", ".")) || 0;
           if (Array.isArray(b.bilder)) v.neu.bilder = b.bilder.map(String).filter((x: string) => /^https:\/\//.test(x)).slice(0, 24);
           if ("abgehakt" in b) v.abgehakt = !!b.abgehakt;
+          // nach einer Änderung ist eine alte eBay-Fehlermeldung nicht mehr aktuell
+          if (["titel", "preis", "zustandText", "beschreibung", "bilder"].some((k) => k in b)) v.fehler = "";
           // Kreuzchen: einmal von Hand gesetzt, überschreibt die KI sie nicht mehr
           if ("batterie" in b) { v.neu.batterie = !!b.batterie; v.neu.batterieGesetzt = true; }
           if ("u3" in b) { v.neu.u3 = !!b.u3; v.neu.u3Gesetzt = true; }

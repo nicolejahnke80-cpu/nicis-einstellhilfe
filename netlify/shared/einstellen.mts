@@ -1,5 +1,5 @@
 import { db, getSettings, imgKey, saveDraft, type Shop } from "./store.mts";
-import { anzeigeInKampagne, bildHochladen, cdata, esc, produktsicherheitXml, trading } from "./ebay.mts";
+import { anzeigeInKampagne, bildHochladen, cdata, esc, merkmaleFuer, produktsicherheitXml, trading } from "./ebay.mts";
 import { fehlendeAngaben } from "./ki.mts";
 
 async function bilderHochladen(d: any) {
@@ -75,11 +75,31 @@ export function sicherheitFuer(f: { batterie?: boolean; u3?: boolean }, s: any) 
   );
 }
 
-function itemXml(d: any, s: any) {
+/**
+ * Werte eines Merkmals passend zu eBays Regeln: Bei Merkmalen, die nur EINEN Wert erlauben (z. B. oft „Farbe“),
+ * werden mehrere Werte zusammengefasst – „Mehrfarbig“, wenn eBay das anbietet, sonst „Blau / Weiß“ oder der erste Wert.
+ */
+export function merkmalWerte(name: string, werte: any, aspekt?: any) {
+  let vals = (Array.isArray(werte) ? werte : [werte])
+    .map((v: any) => String(v).trim())
+    .filter(Boolean);
+  vals = [...new Set(vals)].slice(0, 30);
+  if (vals.length > 1 && aspekt && !aspekt.mehrfach) {
+    const liste: string[] = aspekt.werte || [];
+    const mehrfarbig = /farbe/i.test(name) && liste.find((w) => /^mehrfarbig$/i.test(w));
+    if (mehrfarbig) vals = [mehrfarbig];
+    else if (aspekt.nurAuswahl) vals = [vals[0]];
+    else vals = [vals.join(" / ").slice(0, 65)];
+  }
+  return vals;
+}
+
+function itemXml(d: any, s: any, aspekte: any[] = []) {
   const p = s.shops[d.shop].profile;
+  const nachName = new Map(aspekte.map((a: any) => [String(a.name).toLowerCase(), a]));
   const merkmale = Object.entries(d.merkmale || {})
     .map(([name, werte]: any) => {
-      const vals = (Array.isArray(werte) ? werte : [werte]).map((v: any) => String(v).trim()).filter(Boolean).slice(0, 30);
+      const vals = merkmalWerte(name, werte, nachName.get(String(name).toLowerCase()));
       if (!vals.length) return "";
       return `<NameValueList><Name>${esc(name)}</Name>${vals.map((v: string) => `<Value>${esc(v.slice(0, 65))}</Value>`).join("")}</NameValueList>`;
     })
@@ -127,7 +147,9 @@ export async function einstellen(d: any, pruefen: boolean) {
   await saveDraft(d);
 
   const call = pruefen ? "VerifyAddFixedPriceItem" : "AddFixedPriceItem";
-  const { data, warnungen } = await trading(d.shop, call, itemXml(d, s));
+  // Merkmal-Regeln der Kategorie (ein oder mehrere Werte erlaubt?)
+  const aspekte = (d.kategorien || []).find((k: any) => k.id === d.kategorieId)?.aspekte || (await merkmaleFuer(d.kategorieId).catch(() => []));
+  const { data, warnungen } = await trading(d.shop, call, itemXml(d, s, aspekte));
   d.warnungen = warnungen.map((w: any) => w.text);
   d.gebuehren = gebuehren(data);
   if (pruefen) {
